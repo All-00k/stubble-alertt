@@ -42,6 +42,51 @@ Stubble-Alert is an end-to-end spatiotemporal deep learning platform and mobile 
 
 ---
 
+## Application Interface & Visual Walkthrough
+
+The following screenshots illustrate the interface, spatial visualization, predictive analytics, and edge AI advisor running on mobile and web:
+
+### 1. Overview Dashboard & Active Smoke Corridor
+![Overview Dashboard](docs/screenshots/01_dashboard_overview.png)
+- **Top Navigation Bar**: Live status telemetry, test sample selector, and emergency notifications.
+- **Quick Action Filters**: Direct routing to Fire Satellite, GRAP Rules, Health Guide, and the 37 CAAQMS Station Directory.
+- **Punjab & Haryana Fire Corridor**: Active monitoring of upstream stubble burning (e.g., 1,895 detected farm fires) with northwest transport wind vectors (NW 4.5 m/s) heading toward Delhi NCR.
+- **Hero Zone Telemetry**: Circular AQI gauge with CPCB air quality classification (e.g., Bawana North Industrial), PM2.5 / PM10 concentrations, ambient temperature, and wind speed.
+- **Key Monitoring Zones**: At-a-glance comparison cards across sensitive Delhi nodes (Rohini Sec 16, Anand Vihar, etc.).
+
+### 2. 5x5 Spatial Grid Forecast Matrix & 72-Hour Scrubber
+![5x5 Spatial Grid Forecast](docs/screenshots/02_spatial_5x5_grid.png)
+- **Spatial NCT Partitioning**: 25 discrete neighborhood cells covering the entire National Capital Territory of Delhi (Narela, Burari, Wazirabad, Yamuna Vihar, Shahdara, Bawana, Rohini, Civil Lines, Seelampur, Anand Vihar, Mundka, Karol Bagh, Connaught Place, Laxmi Nagar, Mayur Vihar, Najafgarh, Rajouri Garden, Lodhi Road, Nizamuddin, Sarita Vihar, Dwarka, IGI Airport, Vasant Kunj, Saket, Okhla).
+- **Temporal Scrubber**: Interactive 72-hour timeline allowing hour-by-hour inspection across the full 3-day forecast horizon.
+- **Perimeter Identification Tags**: Cardinal boundary indicators (NW Bawana, North Narela, NE Shahdara, SW Najafgarh, South Saket, SE Okhla) to monitor boundary inflow.
+- **Standardized CPCB Legend**: Color-coded severity tiers spanning Good, Moderate, Poor, Severe, and Hazardous classifications.
+
+### 3. 72-Hour Trajectory Analysis & Inversion Milestones
+![72-Hour Trajectory Chart](docs/screenshots/03_trajectory_chart.png)
+- **Continuous Temporal Trajectory**: Multi-series interactive chart plotting CNN-LSTM predictions against Delhi ground-truth observations, ensemble averages, and persistence models.
+- **Diurnal Inversion Milestones**: Key physical boundary markers identifying:
+  - 06:00 Morning: Peak planetary boundary layer inversion trapping surface smoke.
+  - 12:00 Noon: Solar heating thermal boundary layer expansion and vertical dispersion.
+  - 18:00 Evening: Downward stubble smoke accumulation and wind vector shifts.
+- **Lead Time Horizon Filters**: Rapid inspection toggles for +24h, +48h, and +72h predictive windows.
+- **Interactive Data Cursor**: Granular hover tooltips displaying exact model predictions and ground-truth values.
+
+### 4. Conversational AI Health & Stubble Advisor
+![Conversational AI Advisor](docs/screenshots/04_ai_advisor_chat.png)
+- **Natural Language Understanding**: Evaluates queries such as *"Can I visit Nehru Place tomorrow at 10 pm?"*.
+- **Temporal & Spatial Resolution**: Automatically resolves the target neighborhood and forecast lead time (e.g., Nehru Place at +46h) with confidence scoring.
+- **Actionable Health Verdicts**: Computes health impact advisories (Clear, Caution Advised, or Hazardous Restriction) tailored to predicted PM2.5 concentrations.
+- **Dual Runtime Engine**: Available both via the Flask API backend and running entirely client-side on Android devices without network access.
+
+### 5. Forecast Reliability Benchmarks & Emergency Action Protocols
+![Forecast Reliability and Emergency Protocols](docs/screenshots/05_trust_and_protocols.png)
+- **Emergency Action Protocols**: Immediate operational countermeasures under statutory CAQM GRAP stages (air sealing, HEPA filtration, mandatory N95 respirators, outdoor exposure restrictions).
+- **Forecast Reliability Index**: Displays ensemble trust metrics (94.2% statistical confidence) benchmarked against observed CPCB base stations.
+- **Lead-Time Error Progression**: Empirical performance comparison chart validating error margins across historical observations, +24h forward, +48h forward, and +72h forward horizons.
+- **Atmospheric Model Validation**: Cross-verification telemetry with IMD meteorological towers and automated CAAQMS stations.
+
+---
+
 ## How to Run the Web Application
 
 ### 1. Prerequisites
@@ -196,6 +241,8 @@ stubble-alert/
 |-- model.keras                    # Trained CNN-LSTM model file
 |-- static/
 |   `-- delhi_banner.jpg           # Atmospheric skyline banner image
+|-- docs/
+|   `-- screenshots/               # Application UI captures
 |-- android-build/                 # Native Android SDK build directory
 |   |-- AndroidManifest.xml        # Android application manifest
 |   |-- build_apk.ps1              # Automated PowerShell build script

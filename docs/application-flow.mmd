@@ -1,0 +1,54 @@
+sequenceDiagram
+    autonumber
+    participant U as User (Dashboard)
+    participant FE as Frontend (React + Leaflet)
+    participant API as FastAPI Backend
+    participant DB as Storage (SQLite/PostGIS + Redis)
+    participant SCH as Scheduler (Airflow/Celery)
+    participant CAMS as CAMS API (Copernicus)
+    participant DATA as Data Ingestors (CPCB/Open-Meteo/FIRMS)
+    participant ML as ML-Hybrid Engine
+
+    rect rgb(235, 240, 250)
+    Note over CAMS,DATA: FORECAST CYCLE (every 6–12 h, background)
+    SCH->>CAMS: Fetch 72-h regional AQI forecast<br/>(PM2.5/PM10/O3/NOx + meteorology)
+    SCH->>DATA: Fetch CPCB observations,<br/>meteorology, FIRMS fire hotspots
+    CAMS->>ML: CAMS forecast fields
+    DATA->>ML: CPCB obs + met + fire features
+    ML->>ML: Build feature matrix +<br/>bias-correct via trained model
+    ML->>ML: Compute AQI, inversion strength,<br/>ventilation coeff, plume path,<br/>uncertainty bands
+    ML->>DB: Store corrected 72-h forecast<br/>+ metrics + verification data
+    end
+
+    rect rgb(250, 245, 235)
+    Note over U,API: USER REQUEST FLOW (real-time)
+    U->>FE: Open dashboard
+    FE->>API: GET /api/forecast?region=delhi_ncr&hours=72
+    API->>DB: Query latest forecast + metrics + obs
+    DB-->>API: Ensemble forecast, metrics, plume data
+    API-->>FE: JSON / GeoJSON payload
+    FE->>FE: Render 72-h AQI traces,<br/>contour maps, inversion gauge,<br/>CAMS-vs-corrected, plume animation
+
+    FE->>API: GET /api/verification
+    API->>DB: Fetch recent forecast-vs-observed skill
+    DB-->>API: RMSE/MAE per lead time
+    API-->>FE: Verification panel
+
+    U->>FE: Request notification subscription
+    FE->>API: POST /api/subscribe
+    API->>DB: Store subscription + thresholds
+    API-->>FE: Confirmed
+
+    loop Every polling interval
+        FE->>API: WS /api/live (subscribe updates)
+        API-->>FE: Stream latest values
+    end
+    end
+
+    rect rgb(240, 250, 240)
+    Note over SCH: ALERT TRIGGER (when AQI crosses threshold)
+    SCH->>DB: Check latest forecast vs thresholds
+    DB-->>SCH: Values crossing AQI category
+    SCH->>API: Trigger advisory
+    API-->>U: AQI advisory + health guidance (email/push/SMS)
+    end

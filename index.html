@@ -1,0 +1,3532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Stubble-Alert — 72-Hour Delhi Grid AQI Forecast & Stubble Fire AI</title>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            /* Minimalist Green-Orange-White Palette */
+            --bg-base: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-card-subtle: #f1f5f9;
+            --border-light: #e2e8f0;
+            --border-subtle: #cbd5e1;
+            
+            --color-orange: #ea580c;
+            --color-orange-light: #fff7ed;
+            --color-orange-border: #ffedd5;
+            --color-orange-hover: #c2410c;
+            
+            --color-green: #15803d;
+            --color-green-light: #f0fdf4;
+            --color-green-border: #dcfce7;
+            --color-green-hover: #166534;
+            
+            --color-severe: #dc2626;
+            --color-severe-light: #fef2f2;
+            
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --text-dim: #94a3b8;
+            
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+            --shadow-lg: 0 10px 25px -5px rgba(15, 23, 42, 0.08);
+            
+            --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: var(--font-family);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            overflow-x: hidden;
+            width: 100%;
+            max-width: 100vw;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            background-image: 
+                radial-gradient(at 92% 8%, rgba(234, 88, 12, 0.08) 0px, transparent 48%),
+                radial-gradient(at 8% 22%, rgba(21, 128, 61, 0.07) 0px, transparent 45%),
+                radial-gradient(at 50% 88%, rgba(234, 88, 12, 0.04) 0px, transparent 55%),
+                url("data:image/svg+xml,%3Csvg width='48' height='48' viewBox='0 0 48 48' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%2364748b' fill-opacity='0.035' fill-rule='evenodd'%3E%3Cpath d='M24 22v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-20V0h-2v2h-4v2h4v4h2V4h4V2h-4zM2 22v-4H0v4h0v2h2v4h2v-4h4v-2H4zM2 2V0H0v2h0v2h2v4h2V4h4V2H4z'/%3E%3C/g%3E%3C/svg%3E");
+            background-attachment: fixed;
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-bottom: 96px;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 90px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 90' preserveAspectRatio='none'%3E%3Cpath d='M0,90 L0,78 Q30,78 40,65 L50,65 L50,78 L100,78 L100,55 L112,55 L116,40 L120,55 L132,55 L132,78 L200,78 L200,62 L210,58 L220,62 L220,78 L270,78 L280,50 L290,30 L300,30 L310,50 L320,78 L370,78 L370,60 L380,60 L390,45 L400,60 L410,60 L410,78 L470,78 L480,25 L490,12 L500,12 L510,25 L520,78 L590,78 L600,55 L615,48 L630,55 L640,78 L700,78 L710,38 L722,24 L735,38 L745,78 L810,78 L810,62 L825,62 L825,78 L890,78 L900,48 L915,48 L925,78 L1000,78 L1000,90 Z' fill='%2394a3b8' fill-opacity='0.12'/%3E%3C/svg%3E");
+            background-repeat: repeat-x;
+            background-size: 700px 85px;
+            background-position: bottom center;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 500px;
+            padding: 12px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            position: relative;
+            z-index: 1;
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
+
+        /* ===== TOP APP BAR ===== */
+        .app-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 2px;
+        }
+
+        .brand-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo-badge {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--color-orange), #f97316 40%, var(--color-green));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(234, 88, 12, 0.25);
+            flex-shrink: 0;
+        }
+
+        .brand-logo-badge svg {
+            width: 22px;
+            height: 22px;
+            fill: none;
+            stroke: #ffffff;
+            stroke-width: 2.2;
+        }
+
+        .brand-text h1 {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .live-pill {
+            font-size: 0.65rem;
+            font-weight: 700;
+            background: var(--color-green-light);
+            color: var(--color-green);
+            padding: 2px 8px;
+            border-radius: 20px;
+            border: 1px solid var(--color-green-border);
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .live-pill::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--color-green);
+            box-shadow: 0 0 6px var(--color-green);
+            animation: pulse-live 1.8s infinite;
+        }
+
+        @keyframes pulse-live {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.85); }
+        }
+
+        .brand-sub {
+            font-size: 0.74rem;
+            color: var(--text-muted);
+            margin-top: 1px;
+        }
+
+        .bar-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .scenario-select-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 20px;
+            padding: 5px 10px;
+            color: var(--text-secondary);
+            font-size: 0.74rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .scenario-select-box select {
+            background: transparent;
+            border: none;
+            color: var(--color-orange);
+            font-size: 0.75rem;
+            font-weight: 700;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .btn-icon {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            color: var(--text-secondary);
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s;
+        }
+
+        .btn-icon:hover {
+            border-color: var(--color-orange);
+            color: var(--color-orange);
+        }
+
+        .btn-icon .dot {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--color-orange);
+            border: 2px solid #fff;
+        }
+
+        /* ===== MAIN HERO CARD: SELECTED ZONE ===== */
+        .hero-dashboard-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: var(--shadow-md);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-dashboard-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--color-orange) 0%, #fb923c 40%, var(--color-green) 100%);
+        }
+
+        .zone-pick-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .zone-select-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--color-orange-light);
+            border: 1px solid var(--color-orange-border);
+            border-radius: 12px;
+            padding: 6px 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            max-width: 68%;
+        }
+
+        .zone-select-wrap:hover {
+            border-color: var(--color-orange);
+        }
+
+        .zone-select-wrap svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--color-orange);
+            fill: none;
+            flex-shrink: 0;
+        }
+
+        .zone-select-wrap select {
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-weight: 700;
+            font-size: 0.88rem;
+            outline: none;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .tech-badge {
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: var(--color-green);
+            background: var(--color-green-light);
+            border: 1px solid var(--color-green-border);
+            padding: 4px 10px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+        }
+
+        .tech-badge .green-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--color-green);
+        }
+
+        /* Big AQI & Radial Dial */
+        .aqi-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .aqi-metric-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .aqi-huge {
+            font-size: 3.6rem;
+            font-weight: 900;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            color: var(--text-primary);
+        }
+
+        .severity-alert-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--color-orange-light);
+            color: var(--color-orange);
+            border: 1px solid var(--color-orange-border);
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 0.74rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            width: fit-content;
+        }
+
+        .grap-caption {
+            font-size: 0.76rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-top: 3px;
+        }
+
+        .radial-gauge-box {
+            position: relative;
+            width: 86px;
+            height: 86px;
+            flex-shrink: 0;
+        }
+
+        .radial-gauge-box svg {
+            transform: rotate(-90deg);
+            width: 86px;
+            height: 86px;
+        }
+
+        .gauge-bg-ring {
+            fill: none;
+            stroke: #e2e8f0;
+            stroke-width: 6;
+        }
+
+        .gauge-accent-ring {
+            fill: none;
+            stroke: var(--color-orange);
+            stroke-width: 6;
+            stroke-linecap: round;
+            stroke-dasharray: 213;
+            stroke-dashoffset: 50;
+            transition: stroke-dashoffset 0.6s ease;
+        }
+
+        .gauge-center-text {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        .update-stamp {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 16px;
+        }
+
+        .stats-quad-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 6px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .stat-card-chip {
+            background: var(--bg-card-subtle);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 8px 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .stat-chip-label {
+            font-size: 0.64rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+
+        .stat-chip-val {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        .stat-chip-val.orange { color: var(--color-orange); }
+        .stat-chip-val.red { color: var(--color-severe); }
+        .stat-chip-val.green { color: var(--color-green); }
+
+        .stat-chip-sub {
+            font-size: 0.62rem;
+            color: var(--text-dim);
+            font-weight: 500;
+        }
+
+        /* ===== SECTION HEADERS ===== */
+        .section-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 6px;
+            margin-bottom: 4px;
+        }
+
+        .section-heading {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-heading svg {
+            width: 17px;
+            height: 17px;
+            stroke: var(--color-orange);
+            fill: none;
+        }
+
+        .section-link {
+            font-size: 0.72rem;
+            color: var(--color-green);
+            font-weight: 700;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .section-link:hover {
+            text-decoration: underline;
+        }
+
+        /* ===== KEY MONITORING ZONES ===== */
+        .zones-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .zone-card-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 14px;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .zone-card-item:hover {
+            border-color: var(--color-orange);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .zone-card-item.active {
+            border: 1.5px solid var(--color-green);
+            background: var(--color-green-light);
+        }
+
+        .zone-item-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+        }
+
+        .zone-item-name {
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .zone-item-sub {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .zone-item-aqi {
+            font-size: 0.85rem;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 8px;
+            color: #ffffff;
+            background: var(--color-orange);
+            line-height: 1.1;
+        }
+
+        .zone-item-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .zone-item-cat { color: var(--color-orange); }
+        .zone-item-pm { color: var(--text-muted); }
+
+        /* ===== INTERACTIVE 5x5 DELHI GRID MATRIX ===== */
+        .matrix-panel-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 18px;
+            padding: 14px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: var(--shadow-md);
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .scrubber-control-box {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: var(--bg-card-subtle);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 10px 12px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .scrubber-info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: clamp(0.68rem, 2.2vw, 0.76rem);
+        }
+
+        .scrubber-info-row span:first-child {
+            font-weight: 800;
+            color: var(--color-orange);
+        }
+
+        .scrubber-info-row span:last-child {
+            color: var(--color-green);
+            font-weight: 700;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e2e8f0;
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--color-orange);
+            box-shadow: 0 2px 6px rgba(234, 88, 12, 0.4);
+            cursor: pointer;
+            border: 2px solid #fff;
+        }
+
+        .matrix-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .compass-tags {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 100%;
+            font-size: clamp(0.52rem, 1.8vw, 0.64rem);
+            color: var(--text-dim);
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            padding: 0 2px;
+            box-sizing: border-box;
+        }
+
+        .spatial-5x5-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 4px;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .grid-cell-box {
+            min-width: 0;
+            max-width: 100%;
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2px 1px;
+            cursor: pointer;
+            transition: transform 0.12s ease, box-shadow 0.12s ease;
+            border: 1px solid rgba(255, 255, 255, 0.45);
+            text-align: center;
+            color: #fff;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+            box-sizing: border-box;
+            overflow: hidden;
+            position: relative;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .grid-cell-box:active {
+            transform: scale(0.95);
+        }
+
+        .grid-cell-box.selected {
+            border: 2px solid #0f172a;
+            outline: 2.5px solid var(--color-orange);
+            outline-offset: -2px;
+            transform: scale(1.03);
+            z-index: 3;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.28);
+        }
+
+        .grid-cell-title {
+            font-size: clamp(0.46rem, 1.8vw, 0.58rem);
+            font-weight: 700;
+            line-height: 1.12;
+            text-align: center;
+            width: 100%;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            word-break: break-word;
+            opacity: 0.95;
+            pointer-events: none;
+            padding: 0 1px;
+            box-sizing: border-box;
+        }
+
+        .grid-cell-num {
+            font-size: clamp(0.72rem, 3vw, 0.88rem);
+            font-weight: 900;
+            line-height: 1.05;
+            margin-top: 2px;
+            letter-spacing: -0.02em;
+            pointer-events: none;
+        }
+
+        .scale-bar-wrap {
+            width: 100%;
+            max-width: 100%;
+            margin-top: 4px;
+            box-sizing: border-box;
+        }
+
+        .scale-gradient {
+            height: 6px;
+            width: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #16a34a 0%, #eab308 25%, #ea580c 55%, #dc2626 80%, #991b1b 100%);
+            margin-bottom: 4px;
+        }
+
+        .scale-legend-text {
+            display: flex;
+            justify-content: space-between;
+            font-size: clamp(0.46rem, 1.6vw, 0.58rem);
+            color: var(--text-dim);
+            font-weight: 700;
+            gap: 2px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* ===== 72-HOUR TRAJECTORY FORECAST ===== */
+        .trajectory-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 18px;
+            padding: 14px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: var(--shadow-md);
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .trajectory-nav-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .horizon-buttons-group {
+            display: flex;
+            gap: 6px;
+        }
+
+        .horizon-pill-btn {
+            background: var(--bg-card-subtle);
+            border: 1px solid var(--border-light);
+            color: var(--text-secondary);
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .horizon-pill-btn:hover {
+            color: var(--color-orange);
+            border-color: var(--color-orange-border);
+        }
+
+        .horizon-pill-btn.active {
+            background: var(--color-orange-light);
+            border-color: var(--color-orange);
+            color: var(--color-orange);
+        }
+
+        .milestones-tri-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 6px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .milestone-item-card {
+            background: var(--bg-card-subtle);
+            border: 1px solid var(--border-light);
+            border-radius: 14px;
+            padding: 10px 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 4px;
+            min-width: 0;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .milestone-time-tag {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+
+        .milestone-icon-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #fff;
+            border: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .milestone-val-num {
+            font-size: 1.1rem;
+            font-weight: 900;
+            color: var(--text-primary);
+        }
+
+        .milestone-tagline {
+            font-size: 0.64rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            line-height: 1.1;
+        }
+
+        .milestone-progress {
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: #e2e8f0;
+            overflow: hidden;
+            margin-top: 2px;
+        }
+
+        .milestone-fill {
+            height: 100%;
+            background: var(--color-orange);
+            border-radius: 2px;
+        }
+
+        .trajectory-chart-wrap {
+            position: relative;
+            height: 190px;
+            width: 100%;
+            margin-top: 4px;
+        }
+
+        /* ===== CHAT AGENT UI: STUBBLE-ALERT AI ADVISOR ===== */
+        .chat-agent-card {
+            background: var(--bg-card);
+            border: 1.5px solid var(--border-light);
+            border-radius: 22px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            box-shadow: var(--shadow-md);
+            position: relative;
+        }
+
+        .chat-agent-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 24px;
+            right: 24px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--color-green) 0%, #10b981 30%, var(--color-orange) 70%, #f97316 100%);
+            border-radius: 0 0 4px 4px;
+        }
+
+        .chat-agent-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 4px;
+        }
+
+        .agent-identity {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .agent-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--color-green), #10b981 50%, var(--color-orange));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            box-shadow: 0 3px 10px rgba(21, 128, 61, 0.25);
+            flex-shrink: 0;
+        }
+
+        .agent-avatar svg {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke: #fff;
+            stroke-width: 2.2;
+        }
+
+        .agent-meta h3 {
+            font-size: 0.96rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .agent-badge-pill {
+            font-size: 0.62rem;
+            font-weight: 800;
+            color: var(--color-green);
+            background: var(--color-green-light);
+            border: 1px solid var(--color-green-border);
+            padding: 2px 7px;
+            border-radius: 4px;
+            letter-spacing: 0.04em;
+        }
+
+        .agent-meta p {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .agent-clear-btn {
+            background: var(--bg-card-subtle);
+            border: 1px solid var(--border-light);
+            color: var(--text-dim);
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .agent-clear-btn:hover {
+            color: var(--color-orange);
+            border-color: var(--color-orange);
+            background: var(--color-orange-light);
+        }
+
+        .agent-clear-btn svg {
+            width: 15px;
+            height: 15px;
+            stroke: currentColor;
+            fill: none;
+        }
+
+        /* Chat Dialogue Stream */
+        .chat-stream-box {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 340px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .user-query-bubble {
+            align-self: flex-end;
+            background: var(--text-primary);
+            color: #ffffff;
+            padding: 9px 15px;
+            border-radius: 16px 16px 4px 16px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            max-width: 85%;
+            line-height: 1.45;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .ai-response-container {
+            background: #ffffff;
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* Context Badge Bar (Location, Time, Confidence) */
+        .context-badge-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+            padding-bottom: 6px;
+            border-bottom: 1px dashed var(--border-light);
+        }
+
+        .ctx-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: var(--bg-card-subtle);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-light);
+        }
+
+        .ctx-pill.loc {
+            background: var(--color-orange-light);
+            color: var(--color-orange);
+            border-color: var(--color-orange-border);
+        }
+
+        .ctx-pill.time {
+            background: #eff6ff;
+            color: #2563eb;
+            border-color: #dbeafe;
+        }
+
+        .ctx-pill.conf {
+            background: var(--color-green-light);
+            color: var(--color-green);
+            border-color: var(--color-green-border);
+        }
+
+        .context-jump-btn {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--color-orange);
+            background: transparent;
+            border: 1px solid var(--color-orange);
+            border-radius: 10px;
+            padding: 2px 8px;
+            cursor: pointer;
+            margin-left: auto;
+            transition: all 0.2s;
+        }
+
+        .context-jump-btn:hover {
+            background: var(--color-orange);
+            color: #ffffff;
+        }
+
+        .alert-severity-indicator {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: var(--color-orange);
+        }
+
+        .alert-severity-indicator svg {
+            width: 17px;
+            height: 17px;
+            stroke: currentColor;
+            fill: none;
+            flex-shrink: 0;
+        }
+
+        .alert-risk-body {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .protocol-action-box {
+            background: var(--color-orange-light);
+            border-left: 3.5px solid var(--color-orange);
+            border-radius: 0 10px 10px 0;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .protocol-action-title {
+            font-size: 0.7rem;
+            font-weight: 800;
+            color: var(--color-orange);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .protocol-action-items {
+            margin: 0;
+            padding-left: 16px;
+            font-size: 0.75rem;
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        .protocol-action-items li {
+            margin-bottom: 4px;
+        }
+
+        /* Visit Advisory Card */
+        .visit-advisory-card {
+            border-radius: 12px;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            border: 1.5px solid transparent;
+        }
+
+        .visit-advisory-badge-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .visit-badge-pill {
+            font-size: 0.72rem;
+            font-weight: 800;
+            padding: 3px 9px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .visit-advisory-desc {
+            font-size: 0.76rem;
+            line-height: 1.45;
+            color: var(--text-primary);
+        }
+
+        /* Context pill bar jump button */
+        .context-jump-btn {
+            background: #fff;
+            border: 1px solid var(--border-subtle);
+            color: var(--color-green);
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-left: auto;
+        }
+
+        .context-jump-btn:hover {
+            background: var(--color-green-light);
+            border-color: var(--color-green);
+        }
+
+        /* Better Window Card */
+        .better-window-card {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 10px;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.74rem;
+            color: #1e40af;
+            font-weight: 600;
+        }
+
+        .better-window-card svg {
+            width: 16px;
+            height: 16px;
+            stroke: #2563eb;
+            fill: none;
+            flex-shrink: 0;
+        }
+
+        /* Quick Inquiry Chips */
+        .inquiry-chips-row {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding-bottom: 3px;
+        }
+
+        .inquiry-chip {
+            background: var(--bg-card-subtle);
+            border: 1px solid var(--border-light);
+            color: var(--text-secondary);
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 20px;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .inquiry-chip:hover {
+            color: var(--color-orange);
+            border-color: var(--color-orange);
+            background: var(--color-orange-light);
+        }
+
+        /* Chat Input Field */
+        .chat-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-card-subtle);
+            border: 1.5px solid var(--border-light);
+            border-radius: 30px;
+            padding: 4px 6px 4px 14px;
+            transition: all 0.2s;
+        }
+
+        .chat-input-wrapper:focus-within {
+            border-color: var(--color-green);
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.1);
+        }
+
+        .chat-input-wrapper input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-size: 0.82rem;
+            outline: none;
+            font-weight: 500;
+        }
+
+        .chat-input-wrapper input::placeholder {
+            color: var(--text-dim);
+        }
+
+        .chat-submit-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: var(--color-orange);
+            border: none;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+            box-shadow: 0 2px 6px rgba(234, 88, 12, 0.3);
+        }
+
+        .chat-submit-btn:hover {
+            background: var(--color-orange-hover);
+            transform: scale(1.05);
+        }
+
+        .chat-submit-btn svg {
+            width: 15px;
+            height: 15px;
+            stroke: #fff;
+            fill: none;
+            stroke-width: 2.4;
+        }
+
+        /* ===== FORECAST RELIABILITY & TRUST (BAR PLOT AT BOTTOM) ===== */
+        .trust-panel-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 20px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .trust-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .trust-icon-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .shield-badge-box {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background: var(--color-green-light);
+            border: 1px solid var(--color-green-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--color-green);
+        }
+
+        .shield-badge-box svg {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2.2;
+        }
+
+        .trust-icon-group h3 {
+            font-size: 0.92rem;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        .trust-icon-group p {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .accuracy-pill-badge {
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: var(--color-green);
+            background: var(--color-green-light);
+            border: 1.5px solid var(--color-green-border);
+            padding: 4px 10px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .trust-summary-note {
+            font-size: 0.74rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+            font-weight: 500;
+        }
+
+        .trust-chart-container {
+            position: relative;
+            height: 160px;
+            width: 100%;
+        }
+
+        .trust-legend-bar {
+            display: flex;
+            justify-content: center;
+            gap: 18px;
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            font-weight: 700;
+            margin-top: 2px;
+        }
+
+        .legend-tag {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .circle-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+        }
+
+        .footer-footnote {
+            background: var(--color-green-light);
+            border: 1px solid var(--color-green-border);
+            border-radius: 12px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: flex-start;
+            gap: 9px;
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            line-height: 1.45;
+        }
+
+        .footer-footnote svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--color-green);
+            fill: none;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        /* ===== BOTTOM STICKY NAVIGATION BAR ===== */
+        .bottom-nav-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-top: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 16px;
+            z-index: 100;
+            max-width: 540px;
+            margin: 0 auto;
+            box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.05);
+        }
+
+        .nav-tab-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.68rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav-tab-btn:hover, .nav-tab-btn.active {
+            color: var(--color-orange);
+        }
+
+        .nav-tab-btn svg {
+            width: 19px;
+            height: 19px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+        }
+
+        /* Loading View */
+        .loader-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 320px;
+            color: var(--text-secondary);
+            gap: 12px;
+            font-size: 0.88rem;
+            font-weight: 600;
+        }
+
+        .spinner-wheel {
+            width: 36px;
+            height: 36px;
+            border: 3.5px solid var(--border-light);
+            border-top-color: var(--color-orange);
+            border-radius: 50%;
+            animation: spin-loop 0.8s linear infinite;
+        }
+
+        @keyframes spin-loop {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ===== INTERACTIVE HYPERLINK PILLS STRIP ===== */
+        .interactive-links-strip {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 6px;
+            margin-top: -4px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .nav-hyperlink-pill {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 14px;
+            padding: 8px 3px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            gap: 3px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-sm);
+            min-width: 0;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .nav-hyperlink-pill:hover {
+            border-color: var(--color-orange);
+            background: var(--color-orange-light);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(234, 88, 12, 0.12);
+        }
+
+        .nav-hyperlink-pill .icon {
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+
+        .nav-hyperlink-pill .pill-title {
+            font-size: 0.68rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            white-space: nowrap;
+        }
+
+        .nav-hyperlink-pill .link-arrow {
+            font-size: 0.62rem;
+            color: var(--color-orange);
+            font-weight: 800;
+        }
+
+        /* ===== ATMOSPHERIC BANNER ===== */
+        .delhi-skyline-banner-wrap {
+            position: relative;
+            width: 100%;
+            height: 125px;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid var(--border-light);
+            box-shadow: var(--shadow-md);
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            background: #e2e8f0;
+        }
+
+        .delhi-skyline-banner-wrap:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .skyline-banner-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center 38%;
+            transition: transform 0.4s ease;
+            display: block;
+        }
+
+        .delhi-skyline-banner-wrap:hover .skyline-banner-img {
+            transform: scale(1.03);
+        }
+
+        .banner-glass-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(15, 23, 42, 0.88) 0%, rgba(15, 23, 42, 0.35) 55%, transparent 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 12px 14px;
+            color: #fff;
+            gap: 3px;
+        }
+
+        .banner-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.62rem;
+            font-weight: 800;
+            color: #fdba74;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .banner-tag .pulse-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #ea580c;
+            box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.4);
+            animation: pulse-ring 1.5s infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(234, 88, 12, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(234, 88, 12, 0); }
+        }
+
+        .banner-title {
+            font-size: 0.86rem;
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: -0.01em;
+        }
+
+        .banner-stats-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.68rem;
+            color: #cbd5e1;
+        }
+
+        .banner-stats-row .link-hint {
+            color: #86efac;
+            font-weight: 700;
+            margin-left: auto;
+        }
+
+        /* ===== INTERACTIVE MODALS ===== */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+
+        .modal-backdrop.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-window {
+            background: #ffffff;
+            border: 1px solid var(--border-light);
+            border-radius: 22px;
+            width: 100%;
+            max-width: 520px;
+            max-height: 86vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+            overflow: hidden;
+            transform: translateY(20px) scale(0.98);
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .modal-backdrop.active .modal-window {
+            transform: translateY(0) scale(1);
+        }
+
+        .modal-header {
+            padding: 16px 18px;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fff;
+        }
+
+        .modal-header-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-header-title .m-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background: var(--color-orange-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+        }
+
+        .modal-header-title h3 {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        .modal-header-title p {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .modal-close-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--bg-card-subtle);
+            border: 1px solid var(--border-light);
+            color: var(--text-secondary);
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .modal-close-btn:hover {
+            background: #fee2e2;
+            color: #dc2626;
+            border-color: #fca5a5;
+        }
+
+        .modal-body {
+            padding: 18px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            background: #fbfcfe;
+        }
+
+        .modal-card {
+            background: #ffffff;
+            border: 1px solid var(--border-light);
+            border-radius: 14px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .modal-card-title {
+            font-size: 0.78rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-card p, .modal-card li {
+            font-size: 0.76rem;
+            color: var(--text-secondary);
+            line-height: 1.45;
+        }
+
+        .modal-card ul {
+            padding-left: 18px;
+            margin: 0;
+        }
+
+        /* GRAP Tabs */
+        .grap-tabs-row {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 4px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .grap-tab-btn {
+            background: var(--bg-card-subtle);
+            border: 1px solid var(--border-light);
+            border-radius: 10px;
+            padding: 6px 2px;
+            font-size: clamp(0.58rem, 1.9vw, 0.68rem);
+            font-weight: 700;
+            color: var(--text-secondary);
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+            min-width: 0;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .grap-tab-btn:hover {
+            border-color: var(--color-orange);
+            color: var(--color-orange);
+        }
+
+        .grap-tab-btn.active {
+            background: var(--color-orange);
+            border-color: var(--color-orange);
+            color: #ffffff;
+        }
+
+        /* Official Links Bar */
+        .modal-official-links {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-top: 6px;
+        }
+
+        .ext-link-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #ffffff;
+            border: 1px solid var(--border-light);
+            border-radius: 10px;
+            padding: 9px 12px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            color: var(--color-green);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .ext-link-btn:hover {
+            border-color: var(--color-green);
+            background: var(--color-green-light);
+            transform: translateX(2px);
+        }
+
+        .ext-link-btn span.arrow {
+            font-size: 0.8rem;
+            color: var(--color-orange);
+        }
+
+        /* Station Directory */
+        .station-search-input {
+            width: 100%;
+            padding: 9px 14px;
+            border: 1.5px solid var(--border-light);
+            border-radius: 12px;
+            font-size: 0.8rem;
+            background: #ffffff;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .station-search-input:focus {
+            border-color: var(--color-green);
+            box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.1);
+        }
+
+        .station-list-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 380px;
+            overflow-y: auto;
+            padding-right: 2px;
+        }
+
+        .station-row-card {
+            background: #ffffff;
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            transition: all 0.2s;
+        }
+
+        .station-row-card:hover {
+            border-color: var(--color-orange);
+            background: var(--color-orange-light);
+        }
+
+        .station-info-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .station-name-text {
+            font-size: 0.78rem;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        .station-meta-tags {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.66rem;
+            color: var(--text-muted);
+        }
+
+        .station-meta-tags .agency-badge {
+            background: var(--bg-card-subtle);
+            border: 1px solid var(--border-subtle);
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-weight: 700;
+            color: var(--text-secondary);
+        }
+
+        .station-action-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .station-aqi-pill {
+            font-size: 0.74rem;
+            font-weight: 900;
+            padding: 3px 8px;
+            border-radius: 8px;
+            color: #fff;
+            min-width: 44px;
+            text-align: center;
+        }
+
+        .station-select-btn {
+            background: var(--color-green-light);
+            border: 1px solid var(--color-green-border);
+            color: var(--color-green);
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 4px 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .station-select-btn:hover {
+            background: var(--color-green);
+            color: #fff;
+        }
+
+        .interactive-grap-link {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .interactive-grap-link:hover {
+            color: var(--color-orange);
+            text-decoration: underline;
+        }
+
+        /* ===== FLOATING CHAT FAB TRIGGER ===== */
+        .floating-chat-fab {
+            position: fixed;
+            right: 18px;
+            bottom: 78px;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, var(--color-orange), #f97316 45%, var(--color-green));
+            color: #ffffff;
+            border: none;
+            border-radius: 30px;
+            padding: 11px 18px 11px 14px;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(234, 88, 12, 0.38), 0 2px 6px rgba(0, 0, 0, 0.12);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .floating-chat-fab:hover {
+            transform: translateY(-3px) scale(1.04);
+            box-shadow: 0 12px 28px rgba(234, 88, 12, 0.48);
+        }
+
+        .floating-chat-fab:active {
+            transform: scale(0.95);
+        }
+
+        .fab-icon-box {
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .fab-icon-box svg {
+            width: 20px;
+            height: 20px;
+            stroke: #ffffff;
+            fill: none;
+            stroke-width: 2.2;
+        }
+
+        .fab-pulse-dot {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4ade80;
+            border: 1.5px solid #ffffff;
+            box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.4);
+            animation: fab-pulse 1.8s infinite;
+        }
+
+        @keyframes fab-pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(74, 222, 128, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+        }
+
+        .fab-label-text {
+            font-size: 0.8rem;
+            font-weight: 800;
+            letter-spacing: -0.01em;
+            white-space: nowrap;
+        }
+
+        /* Chat Drawer Specific */
+        .chat-drawer-body {
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: calc(86vh - 70px);
+            overflow-y: hidden;
+            background: #fbfcfe;
+        }
+
+        .chat-drawer-stream {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding-right: 4px;
+            min-height: 240px;
+            max-height: 52vh;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container" id="appRoot">
+    <!-- Top App Bar -->
+    <header class="app-bar">
+        <div class="brand-group">
+            <div class="brand-logo-badge">
+                <svg viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
+            </div>
+            <div class="brand-text">
+                <h1>Stubble-Alert <span class="live-pill">LIVE</span></h1>
+                <div class="brand-sub">Delhi Region 72h AQI & Stubble Fire Forecast</div>
+            </div>
+        </div>
+        <div class="bar-actions">
+            <div class="scenario-select-box">
+                <span>Run:</span>
+                <select id="scenarioDropdown" onchange="changeScenario(this.value)">
+                    <option value="0">#1</option>
+                </select>
+            </div>
+            <button class="btn-icon" title="Active Stubble Fire Alerts">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                <div class="dot"></div>
+            </button>
+        </div>
+    </header>
+
+    <!-- Quick Interactive Hyperlink Strips -->
+    <div class="interactive-links-strip">
+        <a class="nav-hyperlink-pill" onclick="openModal('satelliteModal')">
+            <span class="icon">🛰️</span>
+            <span class="pill-title">Fire Satellite</span>
+            <span class="link-arrow">Open ↗</span>
+        </a>
+        <a class="nav-hyperlink-pill" onclick="openModal('grapModal')">
+            <span class="icon">📜</span>
+            <span class="pill-title">GRAP Rules</span>
+            <span class="link-arrow">Open ↗</span>
+        </a>
+        <a class="nav-hyperlink-pill" onclick="openModal('healthModal')">
+            <span class="icon">🏥</span>
+            <span class="pill-title">Health Guide</span>
+            <span class="link-arrow">Open ↗</span>
+        </a>
+        <a class="nav-hyperlink-pill" onclick="openModal('stationsModal')">
+            <span class="icon">📡</span>
+            <span class="pill-title">37 Stations</span>
+            <span class="link-arrow">Open ↗</span>
+        </a>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loaderView" class="loader-block">
+        <div class="spinner-wheel"></div>
+        <span>Syncing CPCB & Satellite VIIRS telemetry...</span>
+    </div>
+
+    <!-- Main Content Wrapped -->
+    <main id="mainAppView" style="display:none; flex-direction:column; gap:16px;">
+
+        <!-- Atmospheric Delhi Skyline & Satellite Banner -->
+        <div class="delhi-skyline-banner-wrap" onclick="openModal('satelliteModal')" title="Click to view Stubble Smoke Satellite Tracker">
+            <img src="/static/delhi_banner.jpg" alt="Delhi Skyline & Stubble Smoke Atmospheric Banner" class="skyline-banner-img">
+            <div class="banner-glass-overlay">
+                <div class="banner-tag">
+                    <span class="pulse-dot"></span>
+                    <span>SATELLITE SMOKE CORRIDOR ACTIVE</span>
+                </div>
+                <div class="banner-title">Punjab & Haryana Crop Fire Plume Dynamics</div>
+                <div class="banner-stats-row">
+                    <span class="b-stat">🔥 <b>1,895</b> Farm Fires</span>
+                    <span class="b-stat">💨 <b>NW 4.5 m/s</b> Vector</span>
+                    <span class="b-stat link-hint">Open Satellite Map ↗</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 1. MAIN HERO CARD: SELECTED ZONE DASHBOARD -->
+        <section class="hero-dashboard-card" id="overview">
+            <div class="zone-pick-row">
+                <div class="zone-select-wrap" title="Select monitoring zone">
+                    <svg viewBox="0 0 24 24"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8zm0 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"></path></svg>
+                    <select id="zoneSelector" onchange="handleZoneSelect(this.value)"></select>
+                </div>
+                <div class="tech-badge">
+                    <div class="green-dot"></div>
+                    CPCB + SATELLITE
+                </div>
+            </div>
+
+            <div class="aqi-row">
+                <div class="aqi-metric-group">
+                    <div class="aqi-huge" id="heroAqiNumber">382</div>
+                    <div class="severity-alert-pill" id="heroSeverityBadge">⚠️ SEVERE / HAZARDOUS</div>
+                    <div class="grap-caption interactive-grap-link" id="heroGrapStageLabel" onclick="openModal('grapModal')" title="Click to inspect official GRAP Stage restrictions">Delhi Graded Action: Stage IV <span style="font-size:0.65rem; color:var(--color-orange); font-weight:700;">(View Rules ↗)</span></div>
+                </div>
+
+                <!-- Radial Gauge Ring -->
+                <div class="radial-gauge-box">
+                    <svg viewBox="0 0 86 86">
+                        <circle class="gauge-bg-ring" cx="43" cy="43" r="34"></circle>
+                        <circle class="gauge-accent-ring" id="heroGaugeCircle" cx="43" cy="43" r="34"></circle>
+                    </svg>
+                    <div class="gauge-center-text" id="heroGaugePercent">76%</div>
+                </div>
+            </div>
+
+            <div class="update-stamp">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                Telemetry updated via 37 CPCB Stations & Satellite VIIRS Fire Rad
+            </div>
+
+            <!-- 4 Sub-metrics -->
+            <div class="stats-quad-grid">
+                <div class="stat-card-chip">
+                    <div class="stat-chip-label">PM2.5</div>
+                    <div class="stat-chip-val red" id="heroPm25Val">248</div>
+                    <div class="stat-chip-sub" id="heroPm25Ratio">µg/m³ (4.1x)</div>
+                </div>
+                <div class="stat-card-chip">
+                    <div class="stat-chip-label">PM10</div>
+                    <div class="stat-chip-val orange" id="heroPm10Val">390</div>
+                    <div class="stat-chip-sub">µg/m³</div>
+                </div>
+                <div class="stat-card-chip">
+                    <div class="stat-chip-label">TEMP</div>
+                    <div class="stat-chip-val" id="heroTempVal">19°C</div>
+                    <div class="stat-chip-sub" id="heroDewVal">Dew pt 12°</div>
+                </div>
+                <div class="stat-card-chip">
+                    <div class="stat-chip-label">WIND</div>
+                    <div class="stat-chip-val green" id="heroWindVal">4.2</div>
+                    <div class="stat-chip-sub">km/h NW</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. DELHI KEY MONITORING ZONES -->
+        <section>
+            <div class="section-bar">
+                <div class="section-heading">
+                    <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    Delhi Key Monitoring Zones
+                </div>
+                <span class="section-link" onclick="jumpToSection('gridMatrixSec')">Inspect 5×5 Grid</span>
+            </div>
+
+            <div class="zones-2col" id="keyZonesGrid">
+                <!-- Dynamically generated key monitoring cards -->
+            </div>
+        </section>
+
+        <!-- 3. INTERACTIVE 5x5 DELHI GRID MATRIX -->
+        <section class="matrix-panel-card" id="gridMatrixSec">
+            <div class="section-bar" style="margin:0;">
+                <div class="section-heading">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    Delhi 5×5 Spatial Grid Forecast
+                </div>
+                <span style="font-size:0.72rem; color:var(--text-muted); font-weight:700;" id="matrixActiveHour">Hour 1 (Now)</span>
+            </div>
+
+            <!-- Hour Scrubber -->
+            <div class="scrubber-control-box">
+                <div class="scrubber-info-row">
+                    <span id="scrubberHourText">Hour 1 / 72h</span>
+                    <span id="scrubberConfidenceText">Confidence: 96%</span>
+                </div>
+                <input type="range" id="spatialScrubber" min="0" max="71" value="0" oninput="handleHourScrub(this.value)">
+            </div>
+
+            <div class="matrix-wrapper">
+                <div class="compass-tags">
+                    <span>NW (Bawana)</span>
+                    <span>North (Narela)</span>
+                    <span>NE (Shahdara)</span>
+                </div>
+                <div class="spatial-5x5-grid" id="spatialGridMatrix">
+                    <!-- 25 Cells -->
+                </div>
+                <div class="compass-tags" style="margin-top:2px;">
+                    <span>SW (Najafgarh)</span>
+                    <span>South (Saket)</span>
+                    <span>SE (Okhla)</span>
+                </div>
+
+                <div class="scale-bar-wrap">
+                    <div class="scale-gradient"></div>
+                    <div class="scale-legend-text">
+                        <span>Good (0-30)</span>
+                        <span>Mod (31-60)</span>
+                        <span>Poor (61-90)</span>
+                        <span>Severe (121-250)</span>
+                        <span>Hazardous (250+)</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. 72-HOUR TRAJECTORY FORECAST -->
+        <section class="trajectory-card" id="trajectorySec">
+            <div class="trajectory-nav-row">
+                <div class="section-heading">
+                    <svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                    72-Hour Trajectory Forecast
+                </div>
+                <div class="horizon-buttons-group">
+                    <button class="horizon-pill-btn active" onclick="switchTrajectoryHorizon(24, this)">+24h</button>
+                    <button class="horizon-pill-btn" onclick="switchTrajectoryHorizon(48, this)">+48h</button>
+                    <button class="horizon-pill-btn" onclick="switchTrajectoryHorizon(72, this)">+72h</button>
+                </div>
+            </div>
+
+            <!-- Milestone Snapshot Cards -->
+            <div class="milestones-tri-grid" id="milestoneSnapshotGrid">
+                <div class="milestone-item-card">
+                    <div class="milestone-time-tag">06:00 • Morn</div>
+                    <div class="milestone-icon-circle">🌫️</div>
+                    <div class="milestone-val-num" id="mileVal1">410</div>
+                    <div class="milestone-tagline">Peak inversion</div>
+                    <div class="milestone-progress"><div class="milestone-fill" style="width: 82%;"></div></div>
+                </div>
+                <div class="milestone-item-card">
+                    <div class="milestone-time-tag">12:00 • Noon</div>
+                    <div class="milestone-icon-circle">☀️</div>
+                    <div class="milestone-val-num" id="mileVal2">320</div>
+                    <div class="milestone-tagline">Solar dispersion</div>
+                    <div class="milestone-progress"><div class="milestone-fill" style="width: 64%;"></div></div>
+                </div>
+                <div class="milestone-item-card">
+                    <div class="milestone-time-tag">18:00 • Eve</div>
+                    <div class="milestone-icon-circle">🔥</div>
+                    <div class="milestone-val-num" id="mileVal3">375</div>
+                    <div class="milestone-tagline">Stubble plume</div>
+                    <div class="milestone-progress"><div class="milestone-fill" style="width: 75%;"></div></div>
+                </div>
+            </div>
+
+            <!-- Line Chart -->
+            <div class="trajectory-chart-wrap">
+                <canvas id="trajectoryCanvas"></canvas>
+            </div>
+        </section>
+
+        <!-- 5. CHAT AGENT UI: STUBBLE-ALERT AI ADVISOR -->
+        <section class="chat-agent-card" id="chatAgentSec">
+            <div class="chat-agent-header">
+                <div class="agent-identity">
+                    <div class="agent-avatar">
+                        <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 14.5h-2v-2h2zm0-4.5h-2V7h2z"></path></svg>
+                    </div>
+                    <div class="agent-meta">
+                        <h3>Stubble-Alert AI Advisor <span class="agent-badge-pill">CLINICAL AI</span></h3>
+                        <p>Context-aware risk & action protocols by location & time</p>
+                    </div>
+                </div>
+                <button class="agent-clear-btn" title="Reset chat" onclick="resetChatStream()">
+                    <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                </button>
+            </div>
+
+            <!-- Chat Stream Flow -->
+            <div class="chat-stream-box" id="chatDialogueFlow">
+                <div class="user-query-bubble" id="starterUserBubble">
+                    Is the current situation severe in Anand Vihar?
+                </div>
+
+                <div class="ai-response-container" id="starterAiResponse">
+                    <div class="context-badge-bar">
+                        <span class="ctx-pill loc">📍 Anand Vihar (ISBT East Cluster)</span>
+                        <span class="ctx-pill time">🕒 Current Hour</span>
+                        <span class="ctx-pill conf">🛡️ 96% Confidence</span>
+                    </div>
+
+                    <div class="alert-severity-indicator">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                        <span id="aiSeverityStatus">Situation is Severe in Anand Vihar (AQI 412)</span>
+                    </div>
+                    <div class="alert-risk-body" id="aiRiskBody">
+                        Airborne particulate exposure in Anand Vihar is HAZARDOUS (PM2.5: 265 µg/m³). Inbound stubble fire smoke vectors from Punjab and Haryana combined with local transit stagnation are producing hazardous ground-level particle trapping.
+                    </div>
+                    <div class="protocol-action-box">
+                        <div class="protocol-action-title">Immediate Action Protocol:</div>
+                        <ul class="protocol-action-items" id="aiProtocolItemList">
+                            <li>Keep windows sealed; set indoor HEPA purifiers to max fan speed mode.</li>
+                            <li>Mandatory N95/FFP2 respirators outdoors; strictly avoid morning cardio.</li>
+                            <li>Asthmatics, heart patients & children must strictly stay indoors.</li>
+                            <li>Keep rescue inhalers accessible if bronchial irritation occurs.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Action Chips -->
+            <div class="inquiry-chips-row">
+                <div class="inquiry-chip" onclick="askPresetQuery('Can I visit Nehru Place tomorrow at 10 pm?')">Visit Nehru Place tomorrow 10pm?</div>
+                <div class="inquiry-chip" onclick="askPresetQuery('Patparganj tomorrow 3pm')">Patparganj tomorrow 3pm</div>
+                <div class="inquiry-chip" onclick="askPresetQuery('Is it severe in Dwarka tomorrow at 7am?')">Dwarka tomorrow 7am</div>
+                <div class="inquiry-chip" onclick="askPresetQuery('Rohini tonight 9pm')">Rohini tonight 9pm</div>
+                <div class="inquiry-chip" onclick="askPresetQuery('Safe running window in CP?')">Safe running window in CP?</div>
+            </div>
+
+            <!-- Chat Input Wrapper -->
+            <div class="chat-input-wrapper">
+                <input type="text" id="agentInputQuery" placeholder="Ask about any Delhi location and time (e.g. Rohini tomorrow 8am)..." onkeydown="if(event.key==='Enter') dispatchUserChat()">
+                <button class="chat-submit-btn" onclick="dispatchUserChat()">
+                    <svg viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+                </button>
+            </div>
+        </section>
+
+        <!-- 6. FORECAST RELIABILITY & TRUST (BAR PLOT AT BOTTOM) -->
+        <section class="trust-panel-card" id="trustSec">
+            <div class="trust-title-row">
+                <div class="trust-icon-group">
+                    <div class="shield-badge-box">
+                        <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    </div>
+                    <div>
+                        <h3>Forecast Reliability & Trust</h3>
+                        <p>Ground Truth vs AI Model Accuracy</p>
+                    </div>
+                </div>
+                <div class="accuracy-pill-badge">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    94.2% TRUST
+                </div>
+            </div>
+
+            <div class="trust-summary-note">
+                Ensemble Satellite Fire Data + Ground Station Validation (Mean Absolute Error: ±8.4 AQI pts).
+            </div>
+
+            <!-- Grouped Bar Chart -->
+            <div class="trust-chart-container">
+                <canvas id="trustBarCanvas"></canvas>
+            </div>
+
+            <div class="trust-legend-bar">
+                <div class="legend-tag">
+                    <div class="circle-dot" style="background:#16a34a;"></div>
+                    Observed CPCB Base
+                </div>
+                <div class="legend-tag">
+                    <div class="circle-dot" style="background:#ea580c;"></div>
+                    AI Ensemble Forecast
+                </div>
+            </div>
+
+            <div class="footer-footnote">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                <span>Trained continuously on 7 years of IMD meteorological and Delhi CPCB telemetry across 37 automated atmospheric monitoring stations.</span>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<!-- Floating Tap-to-Open Chat Button -->
+<button class="floating-chat-fab" id="floatingChatBtn" onclick="toggleChatDrawer()" title="Tap to Chat with Stubble-Alert AI Advisor" aria-label="Open AI Advisor Chat">
+    <div class="fab-icon-box">
+        <svg viewBox="0 0 24 24">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span class="fab-pulse-dot"></span>
+    </div>
+    <span class="fab-label-text">Ask AI</span>
+</button>
+
+<!-- Sticky Bottom Navigation Bar -->
+<nav class="bottom-nav-bar">
+    <a class="nav-tab-btn active" onclick="jumpToSection('overview')">
+        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+        Overview
+    </a>
+    <a class="nav-tab-btn" onclick="jumpToSection('gridMatrixSec')">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        5×5 Grid
+    </a>
+    <a class="nav-tab-btn" onclick="toggleChatDrawer()">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        AI Advisor
+    </a>
+    <a class="nav-tab-btn" onclick="jumpToSection('trustSec')">
+        <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+        Trust Factor
+    </a>
+</nav>
+
+<!-- ================= MODAL 1: SATELLITE FIRE TRACKER ================= -->
+<div class="modal-backdrop" id="satelliteModal" onclick="if(event.target===this) closeModal('satelliteModal')">
+    <div class="modal-window">
+        <div class="modal-header">
+            <div class="modal-header-title">
+                <div class="m-icon">🛰️</div>
+                <div>
+                    <h3>Stubble Smoke Satellite Tracker</h3>
+                    <p>NASA VIIRS & MODIS 375m Active Fire Detections</p>
+                </div>
+            </div>
+            <button class="modal-close-btn" onclick="closeModal('satelliteModal')">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-card" style="border-left: 4px solid var(--color-orange); background: var(--color-orange-light);">
+                <div class="modal-card-title" style="color: var(--color-orange);">
+                    <span>🔥 Farm Fire Biomass Burning Status</span>
+                    <span style="font-size:0.68rem; background:#fff; padding:2px 6px; border-radius:10px; border:1px solid #fed7aa;">Live Sync</span>
+                </div>
+                <p>NASA FIRMS remote sensing detects post-monsoon paddy residue burning across Punjab (Majha, Malwa) and Northern Haryana. Inbound thermal plumes are being channelled directly into the Delhi bowl.</p>
+                <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 4px;">
+                    <div style="background:#fff; padding:8px 6px; border-radius:10px; text-align:center; border:1px solid #ffedd5;">
+                        <div style="font-size:1.1rem; font-weight:900; color:var(--color-orange);">1,420</div>
+                        <div style="font-size:0.62rem; color:var(--text-muted); font-weight:700;">Punjab Fires</div>
+                    </div>
+                    <div style="background:#fff; padding:8px 6px; border-radius:10px; text-align:center; border:1px solid #ffedd5;">
+                        <div style="font-size:1.1rem; font-weight:900; color:#ea580c;">380</div>
+                        <div style="font-size:0.62rem; color:var(--text-muted); font-weight:700;">Haryana Fires</div>
+                    </div>
+                    <div style="background:#fff; padding:8px 6px; border-radius:10px; text-align:center; border:1px solid #ffedd5;">
+                        <div style="font-size:1.1rem; font-weight:900; color:#dc2626;">48.6 MW</div>
+                        <div style="font-size:0.62rem; color:var(--text-muted); font-weight:700;">Mean FRP</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-card">
+                <div class="modal-card-title">💨 Transport Vector & Plume Dynamics</div>
+                <ul>
+                    <li><b>Wind Vector:</b> North-Westerly (NW) at 4.2 – 5.8 m/s carrying trans-boundary particulate smoke across the Indo-Gangetic Plain.</li>
+                    <li><b>Atmospheric Inversion:</b> Nocturnal boundary layer drops below 100 meters, trapping fine PM2.5 in near-surface breathing zones.</li>
+                    <li><b>Estimated Stubble Contribution:</b> Accounting for 32% – 44% of Delhi's current cumulative particulate load.</li>
+                </ul>
+            </div>
+
+            <div class="modal-official-links">
+                <div style="font-size:0.7rem; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Official Satellite Portals:</div>
+                <a href="https://firms.modaps.eosdis.nasa.gov/map/" target="_blank" class="ext-link-btn">
+                    <span>🛰️ NASA FIRMS Global Fire Map</span>
+                    <span class="arrow">Visit ↗</span>
+                </a>
+                <a href="http://safar.tropmet.res.in/" target="_blank" class="ext-link-btn">
+                    <span>🌦️ SAFAR-India Stubble Fire Contribution</span>
+                    <span class="arrow">Visit ↗</span>
+                </a>
+                <a href="https://mausam.imd.gov.in/" target="_blank" class="ext-link-btn">
+                    <span>📡 IMD Delhi Environmental Monitoring</span>
+                    <span class="arrow">Visit ↗</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================= MODAL 2: GRAP RULES ================= -->
+<div class="modal-backdrop" id="grapModal" onclick="if(event.target===this) closeModal('grapModal')">
+    <div class="modal-window">
+        <div class="modal-header">
+            <div class="modal-header-title">
+                <div class="m-icon">📜</div>
+                <div>
+                    <h3>CAQM GRAP Restriction Rules</h3>
+                    <p>Graded Response Action Plan Enforcement Matrix</p>
+                </div>
+            </div>
+            <button class="modal-close-btn" onclick="closeModal('grapModal')">✕</button>
+        </div>
+        <div class="modal-body">
+            <!-- Stage Tabs -->
+            <div class="grap-tabs-row">
+                <button class="grap-tab-btn" id="grapTab1" onclick="setGrapModalStage(1)">Stage I<br><span style="font-size:0.58rem;font-weight:500;">201-300</span></button>
+                <button class="grap-tab-btn" id="grapTab2" onclick="setGrapModalStage(2)">Stage II<br><span style="font-size:0.58rem;font-weight:500;">301-400</span></button>
+                <button class="grap-tab-btn active" id="grapTab3" onclick="setGrapModalStage(3)">Stage III<br><span style="font-size:0.58rem;font-weight:500;">401-450</span></button>
+                <button class="grap-tab-btn" id="grapTab4" onclick="setGrapModalStage(4)">Stage IV<br><span style="font-size:0.58rem;font-weight:500;">&gt;450</span></button>
+            </div>
+
+            <!-- Dynamic Stage Container -->
+            <div id="grapStageContent" class="modal-card" style="border-left: 4px solid #ef4444; background: #fff;">
+                <!-- Filled via JS -->
+            </div>
+
+            <div class="modal-official-links">
+                <div style="font-size:0.7rem; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Official Commission Orders:</div>
+                <a href="https://caqm.gov.in/" target="_blank" class="ext-link-btn">
+                    <span>🏛️ Commission for Air Quality Management (CAQM) Orders</span>
+                    <span class="arrow">Visit ↗</span>
+                </a>
+                <a href="https://transport.delhi.gov.in/" target="_blank" class="ext-link-btn">
+                    <span>🚗 Delhi Transport Dept: BS-III/IV Vehicular Ban Circular</span>
+                    <span class="arrow">Visit ↗</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================= MODAL 3: HEALTH GUIDE ================= -->
+<div class="modal-backdrop" id="healthModal" onclick="if(event.target===this) closeModal('healthModal')">
+    <div class="modal-window">
+        <div class="modal-header">
+            <div class="modal-header-title">
+                <div class="m-icon">🏥</div>
+                <div>
+                    <h3>Health Advisory & Protection Guide</h3>
+                    <p>Clinical Recommendations for Severe Particle Exposure</p>
+                </div>
+            </div>
+            <button class="modal-close-btn" onclick="closeModal('healthModal')">✕</button>
+        </div>
+        <div class="modal-body">
+            <!-- Mask Comparison -->
+            <div class="modal-card">
+                <div class="modal-card-title">😷 Mask Efficacy Guide (PM2.5 Filtration)</div>
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 8px; background:#f0fdf4; border-radius:8px; border:1px solid #bbf7d0;">
+                        <span style="font-size:0.75rem; font-weight:800; color:#15803d;">✅ N95 / FFP2 / KN95</span>
+                        <span style="font-size:0.72rem; font-weight:700; color:#15803d;">95% - 99% Filtration</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 8px; background:#fff7ed; border-radius:8px; border:1px solid #fed7aa;">
+                        <span style="font-size:0.75rem; font-weight:700; color:#c2410c;">⚠️ 3-Ply Surgical Mask</span>
+                        <span style="font-size:0.72rem; font-weight:700; color:#c2410c;">~30% (Edge leakage)</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 8px; background:#fef2f2; border-radius:8px; border:1px solid #fecaca;">
+                        <span style="font-size:0.75rem; font-weight:700; color:#b91c1c;">🚫 Cloth Mask / Bandana</span>
+                        <span style="font-size:0.72rem; font-weight:700; color:#b91c1c;">&lt;10% (Ineffective)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vulnerable Groups -->
+            <div class="modal-card">
+                <div class="modal-card-title">🛡️ Sensitive Population Protocols</div>
+                <ul>
+                    <li><b>Asthma / Respiratory Patients:</b> Keep rescue bronchodilator inhalers within arm's reach. Never skip maintenance corticosteroid inhalers.</li>
+                    <li><b>Elderly & Heart Patients:</b> Completely suspend morning outdoor walks. Inhalation of particulate matter causes systemic vasoconstriction.</li>
+                    <li><b>Children & Infants:</b> Higher respiratory rates per body mass mean greater relative alveolar burden; restrict outdoor play.</li>
+                </ul>
+            </div>
+
+            <!-- Home Air Quality -->
+            <div class="modal-card">
+                <div class="modal-card-title">🏡 Indoor HEPA Clean Air Management</div>
+                <ul>
+                    <li>Run True HEPA H13 filtration continuously in bedrooms during sleep hours.</li>
+                    <li>Do not burn incense, candles, or mosquito coils indoors during severe episodes.</li>
+                    <li><b>Ventilation Window:</b> Only ventilate during peak solar hours (1:00 PM – 3:30 PM).</li>
+                </ul>
+            </div>
+
+            <div class="modal-official-links">
+                <div style="font-size:0.7rem; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Clinical & Health References:</div>
+                <a href="https://main.mohfw.gov.in/" target="_blank" class="ext-link-btn">
+                    <span>🏥 MoHFW Clinical Guidelines on Air Pollution</span>
+                    <span class="arrow">Visit ↗</span>
+                </a>
+                <a href="https://www.who.int/news-room/fact-sheets/detail/ambient-(outdoor)-air-quality-and-health" target="_blank" class="ext-link-btn">
+                    <span>🌐 WHO Ambient Air Quality & Health Thresholds</span>
+                    <span class="arrow">Visit ↗</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================= MODAL 4: 37 STATIONS DIRECTORY ================= -->
+<div class="modal-backdrop" id="stationsModal" onclick="if(event.target===this) closeModal('stationsModal')">
+    <div class="modal-window">
+        <div class="modal-header">
+            <div class="modal-header-title">
+                <div class="m-icon">📡</div>
+                <div>
+                    <h3>37 Delhi CPCB/DPCC Stations</h3>
+                    <p>Continuous Ambient Air Quality Monitoring Network</p>
+                </div>
+            </div>
+            <button class="modal-close-btn" onclick="closeModal('stationsModal')">✕</button>
+        </div>
+        <div class="modal-body">
+            <!-- Search Bar -->
+            <input type="text" class="station-search-input" id="stationSearchBox" placeholder="Search by station name, district, or agency (e.g. Dwarka, DPCC)..." oninput="filterStationsDirectory(this.value)">
+
+            <!-- Station List Container -->
+            <div class="station-list-grid" id="stationsDirectoryList">
+                <div style="text-align:center; padding:20px; font-size:0.75rem; color:var(--text-muted);">
+                    Loading continuous monitoring stations...
+                </div>
+            </div>
+
+            <div class="modal-official-links">
+                <div style="font-size:0.7rem; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Official Data Portals:</div>
+                <a href="https://airquality.cpcb.gov.in/" target="_blank" class="ext-link-btn">
+                    <span>📊 CPCB National CAAQMS Real-Time Dashboard</span>
+                    <span class="arrow">Visit ↗</span>
+                </a>
+                <a href="https://www.dpcc.delhigovt.nic.in/" target="_blank" class="ext-link-btn">
+                    <span>🏢 Delhi Pollution Control Committee (DPCC) CAAQMS</span>
+                    <span class="arrow">Visit ↗</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================= MODAL 5: CHAT DRAWER MODAL ================= -->
+<div class="modal-backdrop" id="chatDrawerModal" onclick="if(event.target===this) closeModal('chatDrawerModal')">
+    <div class="modal-window" style="max-height: 90vh;">
+        <div class="modal-header">
+            <div class="modal-header-title">
+                <div class="m-icon" style="background:linear-gradient(135deg, var(--color-orange), var(--color-green)); color:#fff;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3>Stubble-Alert AI Advisor</h3>
+                    <p id="drawerActiveZoneSubtitle">Zone: Anand Vihar • Real-time GRAP & Dispersion Telemetry</p>
+                </div>
+            </div>
+            <button class="modal-close-btn" onclick="closeModal('chatDrawerModal')">✕</button>
+        </div>
+        <div class="chat-drawer-body">
+            <!-- Scrollable Conversation Stream -->
+            <div class="chat-drawer-stream" id="drawerChatFlow">
+                <!-- Synchronized with active chat -->
+            </div>
+
+            <!-- Quick Inquiry Chips in Drawer -->
+            <div class="inquiry-chips-row" style="margin-top:2px;">
+                <div class="inquiry-chip" onclick="askPresetQuery('Can I visit Nehru Place tomorrow at 10 pm?')">Visit Nehru Place tomorrow 10pm?</div>
+                <div class="inquiry-chip" onclick="askPresetQuery('Patparganj tomorrow 3pm')">Patparganj tomorrow 3pm</div>
+                <div class="inquiry-chip" onclick="askPresetQuery('Is it severe in Dwarka tomorrow at 7am?')">Dwarka tomorrow 7am</div>
+                <div class="inquiry-chip" onclick="askPresetQuery('Rohini tonight 9pm')">Rohini tonight 9pm</div>
+                <div class="inquiry-chip" onclick="askPresetQuery('Safe running window in CP?')">Safe running in CP?</div>
+            </div>
+
+            <!-- Drawer Input Field -->
+            <div class="chat-input-wrapper" style="background:#fff; box-shadow:var(--shadow-sm);">
+                <input type="text" id="drawerInputQuery" placeholder="Ask location & time (e.g. Nehru Place tomorrow 10pm)..." onkeydown="if(event.key==='Enter') dispatchDrawerChat()">
+                <button class="chat-submit-btn" onclick="dispatchDrawerChat()">
+                    <svg viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Application State
+let appData = null;
+let currentRunId = 0;
+let currentSelectedZone = "Anand Vihar";
+let activeScrubHourIndex = 0;
+let trajectoryChart = null;
+let trustBarChart = null;
+let currentHorizonSpan = 24;
+
+document.addEventListener("DOMContentLoaded", () => {
+    loadForecastData(0, "Anand Vihar");
+});
+
+async function loadForecastData(runId = 0, zoneName = "Anand Vihar") {
+    document.getElementById("loaderView").style.display = "flex";
+    document.getElementById("mainAppView").style.display = "none";
+
+    try {
+        const response = await fetch(`/api/forecast/${runId}?zone=${encodeURIComponent(zoneName)}`);
+        const payload = await response.json();
+        appData = payload;
+        currentRunId = runId;
+        currentSelectedZone = payload.selected_zone.name;
+
+        setupRunDropdown(payload.num_samples);
+        setupZoneDropdown(payload.all_zones);
+        paintSelectedHero(payload.selected_zone);
+        paintKeyZones(payload.key_zones);
+        paintSpatialGrid(0);
+        paintMilestones(payload.milestones);
+        paintTrajectoryChart();
+        paintTrustChart(payload.trust_stats);
+
+        document.getElementById("loaderView").style.display = "none";
+        document.getElementById("mainAppView").style.display = "flex";
+    } catch (error) {
+        console.error("Forecast fetch failure:", error);
+        document.getElementById("loaderView").innerHTML = "<p style='color:#dc2626;'>Unable to load forecast data. Please check app.py.</p>";
+    }
+}
+
+function setupRunDropdown(totalRuns) {
+    const sel = document.getElementById("scenarioDropdown");
+    if (sel.options.length !== totalRuns) {
+        sel.innerHTML = "";
+        for (let i = 0; i < totalRuns; i++) {
+            sel.innerHTML += `<option value="${i}" ${i === currentRunId ? 'selected' : ''}>#${i + 1}</option>`;
+        }
+    }
+}
+
+function changeScenario(runId) {
+    loadForecastData(parseInt(runId), currentSelectedZone);
+}
+
+function setupZoneDropdown(zones) {
+    const sel = document.getElementById("zoneSelector");
+    sel.innerHTML = "";
+    zones.forEach(z => {
+        sel.innerHTML += `<option value="${z.name}" ${z.name === currentSelectedZone ? 'selected' : ''}>${z.name} (${z.cluster})</option>`;
+    });
+}
+
+function handleZoneSelect(zoneName) {
+    if (!appData) return;
+    currentSelectedZone = zoneName;
+    const matched = appData.all_zones.find(z => z.name.toLowerCase() === zoneName.toLowerCase());
+    if (matched) {
+        paintSelectedHero(matched);
+        updateMilestones(matched);
+        paintTrajectoryChart();
+        highlightActiveKeyZone(matched.name);
+        highlightActiveGridCell(matched.row, matched.col);
+
+        document.getElementById("starterUserBubble").innerText = `Is the current situation severe in ${matched.name}?`;
+        quickSeverityCheck(matched.name);
+    }
+}
+
+function paintSelectedHero(zone) {
+    document.getElementById("heroAqiNumber").innerText = zone.aqi;
+    const badge = document.getElementById("heroSeverityBadge");
+    badge.innerText = `⚠️ ${zone.category.label.toUpperCase()}`;
+    
+    if (zone.aqi > 300) {
+        badge.style.color = "#dc2626";
+        badge.style.background = "#fef2f2";
+        badge.style.borderColor = "#fecaca";
+    } else if (zone.aqi > 200) {
+        badge.style.color = "#ea580c";
+        badge.style.background = "#fff7ed";
+        badge.style.borderColor = "#ffedd5";
+    } else {
+        badge.style.color = "#16a34a";
+        badge.style.background = "#f0fdf4";
+        badge.style.borderColor = "#dcfce7";
+    }
+
+    document.getElementById("heroGrapStageLabel").innerText = `Delhi Graded Action: ${zone.grap.stage}`;
+
+    const circ = 2 * Math.PI * 34; // ~213.6
+    const offset = circ - (circ * (zone.gauge_pct / 100));
+    const circle = document.getElementById("heroGaugeCircle");
+    circle.style.strokeDasharray = circ;
+    circle.style.strokeDashoffset = offset;
+    circle.style.stroke = zone.aqi > 300 ? "#dc2626" : (zone.aqi > 200 ? "#ea580c" : "#16a34a");
+    document.getElementById("heroGaugePercent").innerText = `${zone.gauge_pct}%`;
+
+    document.getElementById("heroPm25Val").innerText = zone.pm25;
+    document.getElementById("heroPm25Ratio").innerText = `µg/m³ (${(zone.pm25 / 60).toFixed(1)}x)`;
+    document.getElementById("heroPm10Val").innerText = zone.weather.pm10;
+    document.getElementById("heroTempVal").innerText = `${zone.weather.temp}°C`;
+    document.getElementById("heroDewVal").innerText = `Dew pt ${zone.weather.dew_pt}°`;
+    document.getElementById("heroWindVal").innerText = zone.weather.wind_speed;
+}
+
+function paintKeyZones(keyZones) {
+    const container = document.getElementById("keyZonesGrid");
+    container.innerHTML = "";
+    keyZones.forEach(z => {
+        const isActive = z.name.toLowerCase() === currentSelectedZone.toLowerCase();
+        const card = document.createElement("div");
+        card.className = `zone-card-item ${isActive ? 'active' : ''}`;
+        card.id = `keyCard-${z.name.replace(/\s+/g, '')}`;
+        card.onclick = () => handleZoneSelect(z.name);
+
+        const aqiBg = z.aqi > 300 ? '#dc2626' : (z.aqi > 200 ? '#ea580c' : '#16a34a');
+
+        card.innerHTML = `
+            <div class="zone-item-header">
+                <div>
+                    <div class="zone-item-name">${z.name}</div>
+                    <div class="zone-item-sub">${z.cluster}</div>
+                </div>
+                <div class="zone-item-aqi" style="background:${aqiBg};">${z.aqi}</div>
+            </div>
+            <div class="zone-item-footer">
+                <span class="zone-item-cat" style="color:${aqiBg};">${z.category.label}</span>
+                <span class="zone-item-pm">PM2.5: ${z.pm25}</span>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+function highlightActiveKeyZone(name) {
+    document.querySelectorAll(".zone-card-item").forEach(c => c.classList.remove("active"));
+    const match = document.getElementById(`keyCard-${name.replace(/\s+/g, '')}`);
+    if (match) match.classList.add("active");
+}
+
+function paintSpatialGrid(hourIdx) {
+    if (!appData) return;
+    const matrix = appData.grid_72h[hourIdx];
+    const names = appData.grid_meta.areas;
+    const container = document.getElementById("spatialGridMatrix");
+    container.innerHTML = "";
+
+    const activeZone = appData.all_zones.find(z => z.name.toLowerCase() === currentSelectedZone.toLowerCase());
+
+    for (let r = 0; r < 5; r++) {
+        for (let c = 0; c < 5; c++) {
+            const val = matrix[r][c];
+            const name = names[r][c];
+            const color = getHeatmapColor(val);
+            const isSelected = activeZone && activeZone.row === r && activeZone.col === c;
+
+            const cell = document.createElement("div");
+            cell.className = `grid-cell-box ${isSelected ? 'selected' : ''}`;
+            cell.id = `cell-${r}-${c}`;
+            cell.style.background = color;
+            cell.onclick = () => handleZoneSelect(name);
+            cell.title = `${name}: PM2.5 ${val} µg/m³`;
+
+            cell.innerHTML = `
+                <div class="grid-cell-title">${name}</div>
+                <div class="grid-cell-num">${Math.round(val)}</div>
+            `;
+            container.appendChild(cell);
+        }
+    }
+
+    const timestamp = appData.timestamps[hourIdx];
+    const confidence = appData.belief_factors[hourIdx];
+    document.getElementById("matrixActiveHour").innerText = `Hour ${hourIdx + 1} (${timestamp.split('•')[0].trim()})`;
+    document.getElementById("scrubberHourText").innerText = `Hour ${hourIdx + 1} • ${timestamp}`;
+    document.getElementById("scrubberConfidenceText").innerText = `Confidence: ${confidence}%`;
+}
+
+function highlightActiveGridCell(r, c) {
+    document.querySelectorAll(".grid-cell-box").forEach(el => el.classList.remove("selected"));
+    const match = document.getElementById(`cell-${r}-${c}`);
+    if (match) match.classList.add("selected");
+}
+
+function handleHourScrub(val) {
+    activeScrubHourIndex = parseInt(val);
+    paintSpatialGrid(activeScrubHourIndex);
+}
+
+function getHeatmapColor(val) {
+    if (val <= 30) return "#16a34a";
+    if (val <= 60) return "#eab308";
+    if (val <= 90) return "#f97316";
+    if (val <= 120) return "#ea580c";
+    if (val <= 250) return "#dc2626";
+    return "#991b1b";
+}
+
+function paintMilestones(milestones) {
+    if (!milestones || milestones.length < 3) return;
+    document.getElementById("mileVal1").innerText = milestones[0].aqi;
+    document.getElementById("mileVal2").innerText = milestones[1].aqi;
+    document.getElementById("mileVal3").innerText = milestones[2].aqi;
+}
+
+function updateMilestones(zone) {
+    if (!zone.aqi_series) return;
+    document.getElementById("mileVal1").innerText = zone.aqi_series[6] || 410;
+    document.getElementById("mileVal2").innerText = zone.aqi_series[12] || 320;
+    document.getElementById("mileVal3").innerText = zone.aqi_series[18] || 375;
+}
+
+function switchTrajectoryHorizon(hours, btn) {
+    currentHorizonSpan = hours;
+    document.querySelectorAll(".horizon-pill-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    paintTrajectoryChart();
+}
+
+function paintTrajectoryChart() {
+    if (!appData) return;
+    const ctx = document.getElementById("trajectoryCanvas").getContext("2d");
+    if (trajectoryChart) trajectoryChart.destroy();
+
+    const zone = appData.all_zones.find(item => item.name.toLowerCase() === currentSelectedZone.toLowerCase()) || appData.selected_zone;
+    const labels = appData.short_timestamps.slice(0, currentHorizonSpan);
+    const zoneData = zone.aqi_series.slice(0, currentHorizonSpan);
+    const groundTruth = appData.grid_avg_target.slice(0, currentHorizonSpan);
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, 180);
+    gradient.addColorStop(0, "rgba(234, 88, 12, 0.2)");
+    gradient.addColorStop(1, "rgba(234, 88, 12, 0.0)");
+
+    trajectoryChart = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: `${zone.name} AQI`,
+                    data: zoneData,
+                    borderColor: "#ea580c",
+                    backgroundColor: gradient,
+                    borderWidth: 2.5,
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 0,
+                    pointHoverRadius: 5
+                },
+                {
+                    label: "Delhi Ground Truth",
+                    data: groundTruth,
+                    borderColor: "#16a34a",
+                    borderWidth: 1.8,
+                    borderDash: [4, 4],
+                    fill: false,
+                    tension: 0.35,
+                    pointRadius: 0
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: "index", intersect: false },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: "top",
+                    align: "end",
+                    labels: { color: "#475569", font: { size: 10, weight: 'bold' }, boxWidth: 10 }
+                },
+                tooltip: {
+                    backgroundColor: "#0f172a",
+                    titleColor: "#f8fafc",
+                    bodyColor: "#fb923c",
+                    borderColor: "#334155",
+                    borderWidth: 1,
+                    padding: 8
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: "#64748b", font: { size: 9 }, maxTicksLimit: 6 },
+                    grid: { display: false }
+                },
+                y: {
+                    ticks: { color: "#64748b", font: { size: 9 } },
+                    grid: { color: "rgba(0, 0, 0, 0.05)" }
+                }
+            }
+        }
+    });
+}
+
+function paintTrustChart(trustData) {
+    const ctx = document.getElementById("trustBarCanvas").getContext("2d");
+    if (trustBarChart) trustBarChart.destroy();
+
+    const labels = trustData.bars.map(b => b.horizon);
+    const observed = trustData.bars.map(b => b.observed);
+    const forecast = trustData.bars.map(b => b.forecast);
+
+    trustBarChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: "Observed CPCB Base",
+                    data: observed,
+                    backgroundColor: "#16a34a",
+                    borderRadius: 4,
+                    barPercentage: 0.65,
+                    categoryPercentage: 0.7
+                },
+                {
+                    label: "AI Ensemble Forecast",
+                    data: forecast,
+                    backgroundColor: "#ea580c",
+                    borderRadius: 4,
+                    barPercentage: 0.65,
+                    categoryPercentage: 0.7
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: "#0f172a",
+                    callbacks: {
+                        label: (c) => `${c.dataset.label}: ${c.raw}% accuracy`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: "#475569", font: { size: 10, weight: 'bold' } },
+                    grid: { display: false }
+                },
+                y: {
+                    min: 70,
+                    max: 100,
+                    ticks: {
+                        color: "#64748b",
+                        font: { size: 9 },
+                        stepSize: 10,
+                        callback: (v) => v + "%"
+                    },
+                    grid: { color: "rgba(0, 0, 0, 0.05)" }
+                }
+            }
+        }
+    });
+}
+
+// Chat Agent Handlers
+async function dispatchUserChat() {
+    const input = document.getElementById("agentInputQuery");
+    const query = input.value.trim();
+    if (!query) return;
+    input.value = "";
+    await executeChatQuery(query);
+}
+
+function askPresetQuery(text) {
+    executeChatQuery(text);
+}
+
+async function quickSeverityCheck(zoneName) {
+    try {
+        const resp = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                query: `Is the situation severe in ${zoneName}?`,
+                sample_id: currentRunId,
+                selected_zone: zoneName
+            })
+        });
+        const data = await resp.json();
+        updateStarterAiResponse(data);
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+async function dispatchDrawerChat() {
+    const input = document.getElementById("drawerInputQuery");
+    if (!input) return;
+    const query = input.value.trim();
+    if (!query) return;
+    input.value = "";
+    await executeChatQuery(query);
+}
+
+function toggleChatDrawer() {
+    const modal = document.getElementById("chatDrawerModal");
+    if (modal && modal.classList.contains("active")) {
+        closeModal("chatDrawerModal");
+    } else {
+        openChatDrawer();
+    }
+}
+
+function openChatDrawer() {
+    const sub = document.getElementById("drawerActiveZoneSubtitle");
+    if (sub) {
+        sub.innerText = `Zone: ${currentSelectedZone} • Real-time GRAP & Dispersion Telemetry`;
+    }
+    const drawerFlow = document.getElementById("drawerChatFlow");
+    const mainFlow = document.getElementById("chatDialogueFlow");
+    if (drawerFlow && mainFlow && drawerFlow.children.length === 0) {
+        drawerFlow.innerHTML = mainFlow.innerHTML;
+    }
+    openModal("chatDrawerModal");
+    setTimeout(() => {
+        const inp = document.getElementById("drawerInputQuery");
+        if (inp) inp.focus();
+        if (drawerFlow) drawerFlow.scrollTop = drawerFlow.scrollHeight;
+    }, 120);
+}
+
+async function executeChatQuery(query) {
+    const flow = document.getElementById("chatDialogueFlow");
+    const drawerFlow = document.getElementById("drawerChatFlow");
+
+    const userBubble = document.createElement("div");
+    userBubble.className = "user-query-bubble";
+    userBubble.innerText = query;
+    if (flow) {
+        flow.appendChild(userBubble);
+        flow.scrollTop = flow.scrollHeight;
+    }
+    if (drawerFlow) {
+        drawerFlow.appendChild(userBubble.cloneNode(true));
+        drawerFlow.scrollTop = drawerFlow.scrollHeight;
+    }
+
+    try {
+        const resp = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                query: query,
+                sample_id: currentRunId,
+                selected_zone: currentSelectedZone
+            })
+        });
+        const data = await resp.json();
+        appendAiResponseCard(data);
+    } catch (err) {
+        const errorCard = document.createElement("div");
+        errorCard.className = "ai-response-container";
+        errorCard.innerHTML = "<p style='color:#dc2626;font-size:0.75rem;'>Failed to communicate with Stubble-Alert advisor.</p>";
+        if (flow) flow.appendChild(errorCard);
+        if (drawerFlow) drawerFlow.appendChild(errorCard.cloneNode(true));
+    }
+    if (flow) flow.scrollTop = flow.scrollHeight;
+    if (drawerFlow) drawerFlow.scrollTop = drawerFlow.scrollHeight;
+}
+
+function appendAiResponseCard(data) {
+    const flow = document.getElementById("chatDialogueFlow");
+    const drawerFlow = document.getElementById("drawerChatFlow");
+    const card = document.createElement("div");
+    card.className = "ai-response-container";
+
+    const protocols = data.protocols.map(p => `<li>${p}</li>`).join("");
+    const severityColor = data.is_severe ? '#dc2626' : (data.telemetry && data.telemetry.aqi > 200 ? '#ea580c' : '#16a34a');
+    const boxBg = data.is_severe ? '#fef2f2' : (data.telemetry && data.telemetry.aqi > 200 ? '#fff7ed' : '#f0fdf4');
+    const borderLeft = severityColor;
+
+    // Build Context Badge Bar
+    const locDisplay = data.location ? data.location.display : currentSelectedZone;
+    const timeDisplay = data.time ? `${data.time.label} • ${data.time.timestamp}` : 'Current Hour';
+    const confDisplay = data.time ? `${data.time.confidence}% Confidence` : '96% Confidence';
+    const isDifferentLoc = data.location && data.location.is_explicit && data.location.name.toLowerCase() !== currentSelectedZone.toLowerCase();
+
+    let jumpButtonHtml = "";
+    if (isDifferentLoc) {
+        jumpButtonHtml = `<button class="context-jump-btn" onclick="handleZoneSelect('${data.location.name}')">Select on Dashboard</button>`;
+    }
+
+    // Visit Advisory Card
+    let visitAdvisoryHtml = "";
+    if (data.visit_advisory) {
+        visitAdvisoryHtml = `
+            <div class="visit-advisory-card" style="background:${data.visit_advisory.bg}; border-color:${data.visit_advisory.color}40;">
+                <div class="visit-advisory-badge-row">
+                    <span class="visit-badge-pill" style="color:${data.visit_advisory.color}; background:${data.visit_advisory.color}15; border: 1px solid ${data.visit_advisory.color}40;">
+                        ${data.visit_advisory.badge}
+                    </span>
+                    <span style="font-size:0.7rem; font-weight:800; color:${data.visit_advisory.color};">
+                        Verdict: ${data.visit_advisory.decision}
+                    </span>
+                </div>
+                <div class="visit-advisory-desc">
+                    ${data.visit_advisory.detail}
+                </div>
+            </div>
+        `;
+    }
+
+    // Better Window Box
+    let betterWindowHtml = "";
+    if (data.better_window) {
+        betterWindowHtml = `
+            <div class="better-window-card">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+                <span>💡 Cleaner Window in ${data.location.name}: <b>${data.better_window.time_label}</b> (AQI ${data.better_window.aqi}, <b>${data.better_window.pct_cleaner}% lower PM2.5</b>). Recommended for essential outdoor activities.</span>
+            </div>
+        `;
+    }
+
+    let formattedRisk = data.risk_explanation || "";
+    formattedRisk = formattedRisk.replace(
+        /\[CAQM Advisory: (.*?)\]/g, 
+        `<span class="interactive-grap-link" onclick="openModal('grapModal')" style="color:var(--color-orange);font-weight:700;display:inline-block;margin-top:4px;">📜 CAQM Advisory: $1 <span style="text-decoration:underline; font-size:0.7rem;">(View GRAP Curbs ↗)</span></span>`
+    );
+
+    card.innerHTML = `
+        <div class="context-badge-bar">
+            <span class="ctx-pill loc">📍 ${locDisplay}</span>
+            <span class="ctx-pill time">🕒 ${timeDisplay}</span>
+            <span class="ctx-pill conf">🛡️ ${confDisplay}</span>
+            ${jumpButtonHtml}
+        </div>
+
+        ${visitAdvisoryHtml}
+
+        <div class="alert-severity-indicator" style="color:${severityColor};">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            <span>${data.severity_title}</span>
+        </div>
+
+        <div class="alert-risk-body">
+            ${formattedRisk}
+        </div>
+
+        ${betterWindowHtml}
+
+        <div class="protocol-action-box" style="border-left-color:${borderLeft}; background:${boxBg};">
+            <div class="protocol-action-title" style="color:${severityColor};">Immediate Action Protocol:</div>
+            <ul class="protocol-action-items">
+                ${protocols}
+            </ul>
+        </div>
+    `;
+    if (flow) {
+        flow.appendChild(card);
+        flow.scrollTop = flow.scrollHeight;
+    }
+    if (drawerFlow) {
+        drawerFlow.appendChild(card.cloneNode(true));
+        drawerFlow.scrollTop = drawerFlow.scrollHeight;
+    }
+}
+
+function updateStarterAiResponse(data) {
+    const elSev = document.getElementById("aiSeverityStatus");
+    const elRisk = document.getElementById("aiRiskBody");
+    const ul = document.getElementById("aiProtocolItemList");
+    if (elSev) elSev.innerText = data.severity_title;
+    if (elRisk) elRisk.innerText = data.risk_explanation;
+    if (ul) ul.innerHTML = data.protocols.map(p => `<li>${p}</li>`).join("");
+
+    const drawerFlow = document.getElementById("drawerChatFlow");
+    const flow = document.getElementById("chatDialogueFlow");
+    if (drawerFlow && flow) {
+        drawerFlow.innerHTML = flow.innerHTML;
+    }
+}
+
+function resetChatStream() {
+    const flow = document.getElementById("chatDialogueFlow");
+    flow.innerHTML = `
+        <div class="user-query-bubble" id="starterUserBubble">
+            Is the current situation severe in ${currentSelectedZone}?
+        </div>
+        <div class="ai-response-container" id="starterAiResponse">
+            <div class="context-badge-bar">
+                <span class="ctx-pill loc">📍 ${currentSelectedZone}</span>
+                <span class="ctx-pill time">🕒 Current Hour</span>
+                <span class="ctx-pill conf">🛡️ 96% Confidence</span>
+            </div>
+            <div class="alert-severity-indicator">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                <span id="aiSeverityStatus">Situation is Severe in ${currentSelectedZone}</span>
+            </div>
+            <div class="alert-risk-body" id="aiRiskBody">
+                Airborne particulate exposure is hazardous. Agricultural stubble burning plumes coupled with winter thermal inversion trap PM2.5 within the ground boundary layer.
+            </div>
+            <div class="protocol-action-box">
+                <div class="protocol-action-title">Immediate Action Protocol:</div>
+                <ul class="protocol-action-items" id="aiProtocolItemList">
+                    <li>Keep windows sealed; set HEPA purifiers to max fan mode.</li>
+                    <li>Mandatory N95/FFP2 masks outdoors; avoid morning cardio.</li>
+                    <li>Asthmatics & children must strictly stay indoors.</li>
+                    <li>Keep inhaler/nebulizer accessible if bronchial tightness occurs.</li>
+                </ul>
+            </div>
+        </div>
+    `;
+    const drawerFlow = document.getElementById("drawerChatFlow");
+    if (drawerFlow) {
+        drawerFlow.innerHTML = flow.innerHTML;
+    }
+    quickSeverityCheck(currentSelectedZone);
+}
+
+function jumpToSection(sectionId) {
+    const el = document.getElementById(sectionId);
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+// ===== INTERACTIVE MODAL CONTROLS =====
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add("active");
+        document.body.style.overflow = "hidden";
+        if (modalId === "stationsModal") {
+            loadDelhiStationsDirectory();
+        } else if (modalId === "grapModal") {
+            setGrapModalStage(3);
+        }
+    }
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove("active");
+        document.body.style.overflow = "";
+    }
+}
+
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+        document.querySelectorAll(".modal-backdrop.active").forEach(m => {
+            m.classList.remove("active");
+        });
+        document.body.style.overflow = "";
+    }
+});
+
+// CAQM GRAP Restriction Data & Tab Switcher
+const GRAP_STAGES_DATA = {
+    1: {
+        title: "Stage I — 'Poor' (AQI 201 – 300)",
+        color: "#ea580c",
+        curbs: [
+            "Heavy mechanized vacuum sweeping and water sprinkling on major arterial road networks.",
+            "Strict anti-dust measures enforced at all construction sites (>500 sq meters).",
+            "Stringent verification of PUC (Pollution Under Control) certification for all on-road vehicles.",
+            "Strict zero-tolerance ban on open burning of municipal solid waste, biomass, and plastics."
+        ]
+    },
+    2: {
+        title: "Stage II — 'Very Poor' (AQI 301 – 400)",
+        color: "#ea580c",
+        curbs: [
+            "Daily sprinkling of dust suppressants along with water on arterial corridors and industrial hotspots.",
+            "Ban on diesel generator sets across Delhi-NCR (exemptions strictly for emergency hospitals and railways).",
+            "Enhanced parking fees to deter private motor vehicle commutes and encourage public transit.",
+            "Augment CNG/electric bus fleets and increase Delhi Metro train frequencies."
+        ]
+    },
+    3: {
+        title: "Stage III — 'Severe' (AQI 401 – 450) [CURRENTLY ENFORCED]",
+        color: "#dc2626",
+        curbs: [
+            "Strict ban on plying of BS-III Petrol and BS-IV Diesel 4-wheeler passenger cars across Delhi-NCR.",
+            "Total stoppage on non-essential construction and demolition activities (excavation, welding, stone cutting, tiling).",
+            "State governments mandated to conduct classes up to Class 5 in hybrid/online mode.",
+            "Halt on operations of brick kilns and hot mix plants not powered by approved PNG/clean fuels."
+        ]
+    },
+    4: {
+        title: "Stage IV — 'Severe+' Emergency (AQI > 450)",
+        color: "#991b1b",
+        curbs: [
+            "Complete ban on entry of non-Delhi registered diesel heavy goods vehicles (except essential commodities).",
+            "Halt on ALL linear public construction projects (highways, expressways, flyovers, power transmission).",
+            "Discontinuation of in-person classes for Classes 6 to 9 and Class 11 (complete transition to online).",
+            "Public and private offices advised to operate at 50% physical attendance with mandatory WFH."
+        ]
+    }
+};
+
+function setGrapModalStage(stageNum) {
+    for (let i = 1; i <= 4; i++) {
+        const btn = document.getElementById(`grapTab${i}`);
+        if (btn) {
+            btn.classList.toggle("active", i === stageNum);
+        }
+    }
+    const stage = GRAP_STAGES_DATA[stageNum];
+    const container = document.getElementById("grapStageContent");
+    if (stage && container) {
+        container.style.borderLeftColor = stage.color;
+        container.innerHTML = `
+            <div class="modal-card-title" style="color:${stage.color}; font-size:0.82rem;">
+                <span>${stage.title}</span>
+            </div>
+            <ul style="margin-top:6px; padding-left:18px;">
+                ${stage.curbs.map(c => `<li style="margin-bottom:6px;">${c}</li>`).join("")}
+            </ul>
+        `;
+    }
+}
+
+// 37 Delhi CAAQMS Stations Directory
+let cachedStationsList = [];
+
+async function loadDelhiStationsDirectory() {
+    const listContainer = document.getElementById("stationsDirectoryList");
+    if (!listContainer) return;
+
+    if (cachedStationsList.length > 0) {
+        renderStationsDirectory(cachedStationsList);
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/delhi-stations?sample_id=${currentRunId}`);
+        const data = await res.json();
+        cachedStationsList = data.stations || [];
+        renderStationsDirectory(cachedStationsList);
+    } catch (e) {
+        listContainer.innerHTML = `<div style="color:#dc2626; font-size:0.75rem; text-align:center; padding:16px;">Failed to load station telemetry.</div>`;
+    }
+}
+
+function renderStationsDirectory(stations) {
+    const listContainer = document.getElementById("stationsDirectoryList");
+    if (!listContainer) return;
+
+    if (stations.length === 0) {
+        listContainer.innerHTML = `<div style="text-align:center; padding:16px; font-size:0.75rem; color:var(--text-muted);">No matching stations found.</div>`;
+        return;
+    }
+
+    listContainer.innerHTML = stations.map(s => `
+        <div class="station-row-card">
+            <div class="station-info-group">
+                <div class="station-name-text">${s.name}</div>
+                <div class="station-meta-tags">
+                    <span class="agency-badge">${s.agency}</span>
+                    <span>${s.district}</span>
+                    <span>• Grid ${s.grid_coord}</span>
+                </div>
+            </div>
+            <div class="station-action-group">
+                <div class="station-aqi-pill" style="background:${s.color};">
+                    ${s.aqi}
+                </div>
+                <button class="station-select-btn" onclick="selectStationFromModal('${s.grid_area}')">
+                    Select
+                </button>
+            </div>
+        </div>
+    `).join("");
+}
+
+function filterStationsDirectory(query) {
+    const q = query.toLowerCase().trim();
+    if (!q) {
+        renderStationsDirectory(cachedStationsList);
+        return;
+    }
+    const filtered = cachedStationsList.filter(s => 
+        s.name.toLowerCase().includes(q) ||
+        s.district.toLowerCase().includes(q) ||
+        s.agency.toLowerCase().includes(q) ||
+        s.grid_area.toLowerCase().includes(q)
+    );
+    renderStationsDirectory(filtered);
+}
+
+function selectStationFromModal(gridAreaName) {
+    closeModal('stationsModal');
+    handleZoneSelect(gridAreaName);
+    jumpToSection('overview');
+}
+</script>
+
+</body>
+</html>

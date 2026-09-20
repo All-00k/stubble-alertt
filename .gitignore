@@ -1,0 +1,40 @@
+# Python Virtual Environments
+aqi/
+venv/
+.venv/
+env/
+ENV/
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Jupyter Notebooks & Checkpoints
+.ipynb_checkpoints/
+*.ipynb
+
+# Presentations
+*.ppt
+*.pptx
+HACKCONQUEST HACKATHON_.pptx
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.tmp
+
+# Android Intermediate Build Artifacts
+android-build/build/
+android-build/gen/
+android-build/*.idsig
+*.idsig
+
+# IDE / Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo

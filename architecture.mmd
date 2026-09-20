@@ -1,0 +1,89 @@
+%% Delhi AQI CNN-LSTM Forecast System Architecture
+%% Source image: DATA SOURCES -> FEATURE ENGINEERING -> CNN-LSTM MODEL -> OUTPUT & DASHBOARD
+%% Code refs: app.py, index.html, README.md
+%% Render: https://mermaid.live | VS Code Mermaid Preview | GitHub
+
+flowchart LR
+
+%% ---------- Styles ----------
+classDef source fill:#f8fafc,stroke:#64748b,stroke-width:1.5px,color:#0f172a
+classDef feature fill:#ffffff,stroke:#1e293b,stroke-width:1.8px,color:#0f172a
+classDef model fill:#1e293b,stroke:#0f172a,stroke-width:2px,color:#ffffff
+classDef output fill:#fff7ed,stroke:#fb923c,stroke-width:1.5px,color:#431407
+classDef api fill:#eff6ff,stroke:#2563eb,stroke-width:1.2px,color:#1e3a8a
+classDef store fill:#f0fdf4,stroke:#16a34a,stroke-width:1.2px,color:#14532d
+
+%% ---------- DATA SOURCES (Real-Time) ----------
+subgraph DS ["DATA SOURCES (Real-Time)"]
+  direction TB
+  CPCB["CPCB Ground Stations<br/>PM2.5, PM10, NO2, NH3, SO2, CO<br/>5x5 grid | 24h x 5x5 x 6"]
+  ERA5["ERA5 Weather<br/>Temp, Wind (U/V), PBLH, RH, Pressure, Rain<br/>19x23 grid | 24h x 19x23 x 7"]
+  FIRMS["NASA FIRMS Fires (VIIRS)<br/>Fire Count, FRP<br/>18x22 grid | 24h x 18x22 x 2"]
+end
+
+%% ---------- FEATURE ENGINEERING ----------
+subgraph FE ["FEATURE ENGINEERING"]
+  direction TB
+  FE1["Build 5x5 km grid tensors<br/>per source + region crop"]
+  FE2["StandardScaler normalization (per source)<br/>scalers.pkl: viirs(2), era5(7), cpcb(6), target(1)"]
+  FE3["24-hour input window<br/>sliding window -> (24, H, W, C)"]
+  FE1 --> FE2 --> FE3
+end
+
+%% ---------- CNN-LSTM MODEL ----------
+subgraph MODEL ["CNN-LSTM MODEL - Delhi_AQI_CNN_LSTM"]
+  direction TB
+  M1["3 Parallel TimeDistributed Conv2D Branches<br/>VIIRS: 24x18x22x2 -> Conv2D(32, 3x3) -> MaxPool -> Conv2D(64) -> MaxPool -> GlobalAvgPool<br/>ERA5: 24x19x23x7 -> Conv2D(32, 3x3) -> MaxPool -> Conv2D(64) -> MaxPool -> GlobalAvgPool<br/>CPCB: 24x5x5x6 -> Conv2D(32, 3x3) -> MaxPool -> Conv2D(64) -> MaxPool -> GlobalAvgPool"]
+  M2["Concatenate -> LSTM(128) -> Dense(1800) -> Reshape(72, 5, 5)"]
+  M3["Output: 72h x 5x5 PM2.5 forecast (ug/m3)<br/>Pre-computed: predictions.npy (15,72,5,5)<br/>target.npy / mean_predictions.npy / persistence_predictions.npy"]
+  M1 --> M2 --> M3
+end
+
+%% ---------- OUTPUT & DASHBOARD ----------
+subgraph OUT ["OUTPUT & DASHBOARD"]
+  direction TB
+  O1["72-hour PM2.5 forecast for 25<br/>Delhi grid cells (5 km x 5 km)"]
+  O2["CPCB AQI sub-index conversion<br/>pm25_to_aqi() + get_aqi_category()"]
+  O3["Flask Backend + Interactive HTML Dashboard<br/>app.py + index.html + Chart.js"]
+  O4["Persistence baseline comparison<br/>MAE / RMSE / R2 | Error matrix (6x6) | Horizon error"]
+  O1 --> O2 --> O3 --> O4
+end
+
+%% ---------- LIVE API LAYER (from app.py) ----------
+subgraph LIVE ["LIVE DATA FETCH (app.py /api/realtime)"]
+  direction TB
+  API1["fetch_cpcb_pm25()<br/>api.data.gov.in (CPCB_API_KEY)<br/>fallback -> fetch_aqicn_pm25()<br/>api.waqi.info (AQICN_TOKEN)"]
+  API2["fetch_weather()<br/>api.open-meteo.com<br/>Delhi 28.61,77.21 | No key"]
+  API3["fetch_fires()<br/>firms.modaps.eosdis.nasa.gov<br/>VIIRS_SNPP_NRT | bbox 73,27,79,32<br/>FIRMS_MAP_KEY"]
+end
+
+subgraph FRONTEND ["FRONTEND (index.html)"]
+  direction TB
+  UI1["KPI Cards | 72h Forecast Chart | AQI Chart<br/>5x5 Heatmap (Delhi areas) | Metrics Table<br/>Error Matrix | Horizon Table"]
+  UI2["JS: loadForecast() -> /api/forecast/<id><br/>loadRealtime() -> /api/realtime/delhi<br/>renderForecastChart() / renderAQIChart() / renderHeatmap()"]
+  UI1 --- UI2
+end
+
+STORE["Offline Store (BASE_DIR)<br/>model.keras (5.6 MB) | scalers.pkl<br/>predictions.npy | target.npy"]
+
+%% ---------- Connections (matches reference diagram left-to-right) ----------
+CPCB --> FE1
+ERA5 --> FE1
+FIRMS --> FE1
+FE3 --> M1
+M3 --> O1
+
+API1 -.-> O3
+API2 -.-> O3
+API3 -.-> O3
+
+O3 <--> FRONTEND
+STORE -.-> MODEL
+
+%% ---------- Apply Classes ----------
+class CPCB,ERA5,FIRMS source
+class FE1,FE2,FE3 feature
+class M1,M2,M3 model
+class O1,O2,O3,O4 output
+class API1,API2,API3,UI1,UI2 api
+class STORE store

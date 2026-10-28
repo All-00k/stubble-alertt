@@ -96,8 +96,8 @@ The following screenshots illustrate the interface, spatial visualization, predi
 ### 2. Environment Setup
 ```bash
 # Clone the repository
-git clone https://github.com/All-00k/stubble-alert.git
-cd stubble-alert
+git clone https://github.com/All-00k/stubble-alertt.git
+cd stubble-alertt
 
 # Create virtual environment
 python -m venv venv
